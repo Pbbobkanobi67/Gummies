@@ -51,14 +51,50 @@
         <div class="section">
             <h2>Contract Address to Check:</h2>
             <input type="text" id="contractAddress" value="0x989092ff3b648df57d54b4a4118f396c8815221e" />
-            <button onclick="verifyContract()">Verify Contract</button>
+            <button id="verifyBtn" onclick="verifyContract()" disabled>Loading...</button>
         </div>
 
         <div id="results"></div>
     </div>
 
-    <script src="https://cdn.ethers.io/lib/ethers-5.7.2.umd.min.js"></script>
     <script>
+        // Load ethers.js first
+        let ethersLoaded = false;
+        const cdns = [
+            'https://cdn.ethers.io/lib/ethers-5.7.2.umd.min.js',
+            'https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js',
+            'https://unpkg.com/ethers@5.7.2/dist/ethers.umd.min.js'
+        ];
+        let cdnAttempt = 0;
+
+        function loadEthers() {
+            const script = document.createElement('script');
+            script.src = cdns[cdnAttempt];
+            script.onload = function() {
+                if (typeof ethers !== 'undefined') {
+                    ethersLoaded = true;
+                    document.getElementById('verifyBtn').disabled = false;
+                    document.getElementById('verifyBtn').textContent = 'Verify Contract';
+                    verifyContract(); // Auto-run
+                } else if (cdnAttempt < cdns.length - 1) {
+                    cdnAttempt++;
+                    loadEthers();
+                }
+            };
+            script.onerror = function() {
+                if (cdnAttempt < cdns.length - 1) {
+                    cdnAttempt++;
+                    loadEthers();
+                } else {
+                    document.getElementById('verifyBtn').textContent = 'Failed to load';
+                    addResult('Error', 'Failed to load ethers.js. Please refresh the page.', 'error');
+                }
+            };
+            document.head.appendChild(script);
+        }
+
+        loadEthers();
+
         const RPC_URL = 'https://data-seed-prebsc-1-s1.binance.org:8545/';
 
         function addResult(title, content, type = 'section') {
@@ -162,9 +198,6 @@
                 addResult('❌ Error', `Error checking contract: ${error.message}<br><pre>${error.stack}</pre>`, 'error');
             }
         }
-
-        // Auto-verify on load
-        setTimeout(() => verifyContract(), 500);
     </script>
 </body>
 </html>
