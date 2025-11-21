@@ -9,13 +9,13 @@ async function main() {
   const balance = await hre.ethers.provider.getBalance(deployer.address);
   console.log("💰 Account balance:", hre.ethers.formatEther(balance), "BNB");
 
-  // Contract parameters - UPDATED WITH CORRECT SUBSCRIPTION ID
+  // Contract parameters - VRF v2.5 SETTINGS
   const BLUE_TOKEN = process.env.MOCK_BLUE_TOKEN || "0xf11Af396703E11D48780B5154E52Fd7b430C6C01";
   const TREASURY = process.env.TREASURY_WALLET || deployer.address;
   const DEVELOPER = process.env.DEVELOPER_WALLET || deployer.address;
-  const VRF_COORDINATOR = "0x6A2AAd07396B36Fe02a22b33cf443582f682c82f"; // BNB Testnet VRF Coordinator
-  const SUBSCRIPTION_ID = process.env.VRF_SUBSCRIPTION_ID || "43371163114061566586232043748699703279439038188185138377217877577027786652944";
-  const KEY_HASH = process.env.VRF_KEY_HASH || "0xd4bb89654db74673a187bd804519e65e3f71a52bc55f11da7601a13dcf505314";
+  const VRF_COORDINATOR = process.env.VRF_COORDINATOR || "0xDA3b641D438362C440Ac5458c57e00a712b66700"; // VRF v2.5 Coordinator
+  const SUBSCRIPTION_ID = process.env.VRF_SUBSCRIPTION_ID || "26655927599451290729520880429262733726305991805472180956508373717196718435172";
+  const KEY_HASH = process.env.VRF_KEY_HASH || "0x8596b430971ac45bdf6088665b9ad8e8630c9d5049ab54b14dff711bee7c0e26"; // VRF v2.5 Key Hash
 
   console.log("\n📋 Deployment Parameters:");
   console.log("BLUE Token:", BLUE_TOKEN);
