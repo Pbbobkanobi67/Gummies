@@ -177,7 +177,11 @@
     <div class="container">
         <h1>🎰 Blue Raffle - Full System Diagnostics</h1>
 
-        <div class="button-group">
+        <div id="loading-status" style="text-align: center; padding: 20px; font-size: 1.2em;">
+            ⏳ Loading ethers.js library...
+        </div>
+
+        <div class="button-group" id="button-group" style="display: none;">
             <button onclick="runFullDiagnostics()">🔍 Run Full Diagnostics</button>
             <button onclick="checkVRFSetup()">🔗 Check VRF Setup</button>
             <button onclick="testCloseRound()">🎲 Test Close Round</button>
@@ -187,7 +191,45 @@
         <div class="timestamp" id="timestamp"></div>
     </div>
 
-    <script src="https://cdn.ethers.io/lib/ethers-5.7.2.umd.min.js"></script>
+    <script>
+        // Load ethers.js with fallback CDNs
+        let ethersAttempt = 0;
+        const cdns = [
+            'https://cdn.ethers.io/lib/ethers-5.7.2.umd.min.js',
+            'https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js',
+            'https://unpkg.com/ethers@5.7.2/dist/ethers.umd.min.js'
+        ];
+
+        function loadEthers() {
+            const script = document.createElement('script');
+            script.src = cdns[ethersAttempt];
+            script.onload = function() {
+                if (typeof ethers !== 'undefined') {
+                    document.getElementById('loading-status').innerHTML = '<div class="success-box">✅ Ready!</div>';
+                    setTimeout(() => {
+                        document.getElementById('loading-status').style.display = 'none';
+                        document.getElementById('button-group').style.display = 'block';
+                        runFullDiagnostics();
+                    }, 500);
+                } else {
+                    retryLoad();
+                }
+            };
+            script.onerror = retryLoad;
+            document.head.appendChild(script);
+        }
+
+        function retryLoad() {
+            ethersAttempt++;
+            if (ethersAttempt < cdns.length) {
+                loadEthers();
+            } else {
+                document.getElementById('loading-status').innerHTML = '<div class="error-box">❌ Failed to load ethers.js. Please refresh.</div>';
+            }
+        }
+
+        loadEthers();
+    </script>
     <script>
         const CONFIG = {
             contractAddress: '0x989092ff3b648df57d54b4a4118f396c8815221e',
