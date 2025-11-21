@@ -892,9 +892,18 @@
             }
         }
 
+        // Wait for ethers.js to load before running diagnostics
+        function waitForEthers() {
+            if (typeof ethers !== 'undefined') {
+                runFullDiagnostics();
+            } else {
+                setTimeout(waitForEthers, 100);
+            }
+        }
+
         // Auto-run diagnostics on page load
         window.addEventListener('load', () => {
-            setTimeout(runFullDiagnostics, 500);
+            setTimeout(waitForEthers, 100);
         });
     </script>
 </body>
