@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Blue Raffle - Current Contract Diagnostics</title>
+    <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+    <style>
+        body {
+            font-family: 'Courier New', monospace;
+            background: #1a1a2e;
+            color: #eee;
+            padding: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .section {
+            background: #16213e;
+            border: 2px solid #0f3460;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        .section h2 {
+            color: #53a8ff;
+            margin-top: 0;
+            border-bottom: 2px solid #0f3460;
+            padding-bottom: 10px;
+        }
+        .status {
+            padding: 5px 10px;
+            border-radius: 4px;
+            display: inline-block;
+            font-weight: bold;
+        }
+        .status.pending { background: #f39c12; }
+        .status.active { background: #27ae60; }
+        .status.waiting { background: #3498db; }
+        .status.closed { background: #95a5a6; }
+        .error { color: #e74c3c; font-weight: bold; }
+        .success { color: #2ecc71; font-weight: bold; }
+        .warning { color: #f39c12; font-weight: bold; }
+        .info { color: #3498db; }
+        button {
+            background: #53a8ff;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            margin: 5px;
+        }
+        button:hover {
+            background: #1e90ff;
+        }
+        pre {
+            background: #0d1117;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+        }
+        .participant {
+            background: #0d1117;
+            padding: 10px;
+            margin: 5px 0;
+            border-radius: 4px;
+        }
+        .contract-info {
+            background: #0d1117;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+            border-left: 4px solid #2ecc71;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔍 Blue Raffle - Contract Diagnostics</h1>
+
+    <div class="section">
+        <button onclick="runDiagnostics()">🚀 Run Full Diagnostics</button>
+        <button onclick="location.reload()">🔄 Refresh</button>
+    </div>
+
+    <div id="results"></div>
+
+    <script>
+        const CONFIG = {
+            contractAddress: '0xA02dBe0E347bF353715b21391E00B153E84d3c28',
+            blueTokenAddress: '0xf11Af396703E11D48780B5154E52Fd7b430C6C01',
+            adminWallet: '0xa757d90e353b3E045721A41236831238Fc84024F',
+            subscriptionId: '43371163114061566586232043748699703279439038188185138377217877577027786652944',
+            rpcUrl: 'https://data-seed-prebsc-1-s1.binance.org:8545/',
+            chainId: 97
+        };
+
+        const CONTRACT_ABI = [
+            "function currentRoundId() view returns (uint256)",
+            "function paused() view returns (bool)",
+            "function minParticipants() view returns (uint256)",
+            "function roundDuration() view returns (uint256)",
+            "function getCurrentRoundInfo() view returns (uint256 roundId, uint256 startTime, uint256 endTime, uint256 prizePool, uint256 totalTickets, uint256 uniqueWallets, uint8 status)",
+            "function getRoundParticipants(uint256 roundId) view returns (address[])",
+            "function userTickets(uint256 roundId, address user) view returns (uint256)",
+            "function subscriptionId() view returns (uint256)",
+            "function canCloseRound() view returns (bool, uint256, string)"
+        ];
+
+        const STATUS_NAMES = ['Pending', 'Active', 'WaitingVRF', 'Closed'];
+
+        async function runDiagnostics() {
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = '<div class="section"><h2>Running diagnostics...</h2></div>';
+
+            try {
+                const provider = new ethers.providers.JsonRpcProvider(CONFIG.rpcUrl);
+                const contract = new ethers.Contract(CONFIG.contractAddress, CONTRACT_ABI, provider);
+                let html = '';
+
+                const block = await provider.getBlock('latest');
+                const currentTime = block.timestamp;
+
+                // Contract Info
+                html += '<div class="section">';
+                html += '<h2>📋 Contract Information</h2>';
+                html += '<div class="contract-info">';
+                html += `<p><strong>Address:</strong> ${CONFIG.contractAddress}</p>`;
+
+                const subId = await contract.subscriptionId();
+                const isPaused = await contract.paused();
+                const minParticipants = await contract.minParticipants();
+                const roundDuration = await contract.roundDuration();
+
+                html += `<p><strong>VRF Subscription ID:</strong> ${subId.toString().substring(0, 20)}...</p>`;
+                html += `<p><strong>Contract Paused:</strong> ${isPaused ? '<span class="error">🔴 YES</span>' : '<span class="success">🟢 NO</span>'}</p>`;
+                html += `<p><strong>Min Participants:</strong> ${minParticipants.toString()}</p>`;
+                html += `<p><strong>Round Duration:</strong> ${roundDuration / 60} minutes</p>`;
+                html += '</div>';
+                html += '</div>';
+
+                // Current Round Status
+                html += '<div class="section">';
+                html += '<h2>🎰 Current Round Status</h2>';
+
+                const roundInfo = await contract.getCurrentRoundInfo();
+                const roundId = roundInfo.roundId;
+                const startTime = roundInfo.startTime;
+                const endTime = roundInfo.endTime;
+                const prizePool = roundInfo.prizePool;
+                const totalTickets = roundInfo.totalTickets;
+                const uniqueWallets = roundInfo.uniqueWallets;
+                const status = roundInfo.status;
+
+                html += `<p><strong>Round ID:</strong> ${roundId.toString()}</p>`;
+                html += `<p><strong>Status:</strong> <span class="status ${STATUS_NAMES[status].toLowerCase()}">${STATUS_NAMES[status]}</span></p>`;
+                html += `<p><strong>Unique Participants:</strong> ${uniqueWallets.toString()}</p>`;
+                html += `<p><strong>Total Tickets:</strong> ${ethers.utils.formatEther(totalTickets)} BLUE</p>`;
+                html += `<p><strong>Prize Pool:</strong> ${ethers.utils.formatEther(prizePool)} BLUE</p>`;
+
+                if (startTime.gt(0)) {
+                    html += `<p><strong>Start Time:</strong> ${new Date(startTime * 1000).toLocaleString()}</p>`;
+                    html += `<p><strong>End Time:</strong> ${new Date(endTime * 1000).toLocaleString()}</p>`;
+                    const timeLeft = endTime.toNumber() - currentTime;
+                    if (timeLeft > 0) {
+                        html += `<p><strong>Time Remaining:</strong> ${Math.floor(timeLeft / 60)} minutes ${timeLeft % 60} seconds</p>`;
+                    } else {
+                        html += `<p class="warning"><strong>Time Remaining:</strong> ⏰ EXPIRED (${Math.abs(Math.floor(timeLeft / 60))} minutes ago)</p>`;
+                    }
+                } else {
+                    html += `<p class="info"><strong>Timer:</strong> Not started yet (Pending status)</p>`;
+                }
+                html += '</div>';
+
+                // Participants
+                html += '<div class="section">';
+                html += '<h2>👥 Participants</h2>';
+
+                const participants = await contract.getRoundParticipants(roundId);
+                html += `<p><strong>Total:</strong> ${participants.length}</p>`;
+
+                if (participants.length > 0) {
+                    for (let i = 0; i < participants.length; i++) {
+                        const addr = participants[i];
+                        const tickets = await contract.userTickets(roundId, addr);
+                        html += `<div class="participant">`;
+                        html += `<strong>${i + 1}. ${addr}</strong><br>`;
+                        html += `Tickets: ${ethers.utils.formatEther(tickets)} BLUE`;
+                        html += `</div>`;
+                    }
+                } else {
+                    html += '<p class="warning">No participants yet!</p>';
+                }
+                html += '</div>';
+
+                // Can Close Check
+                html += '<div class="section">';
+                html += '<h2>🔒 Close Round Check</h2>';
+
+                try {
+                    const canClose = await contract.canCloseRound();
+                    html += `<p><strong>Can Close:</strong> ${canClose[0] ? '<span class="success">✅ YES</span>' : '<span class="error">❌ NO</span>'}</p>`;
+                    html += `<p><strong>Close Reward:</strong> ${ethers.utils.formatEther(canClose[1])} BLUE</p>`;
+                    html += `<p><strong>Message:</strong> ${canClose[2]}</p>`;
+                } catch (error) {
+                    html += `<p class="error">❌ Error: ${error.message}</p>`;
+                }
+                html += '</div>';
+
+                // Diagnosis
+                html += '<div class="section">';
+                html += '<h2>🔬 DIAGNOSIS</h2>';
+
+                let hasIssues = false;
+
+                if (isPaused) {
+                    html += '<p class="error">❌ Contract is PAUSED</p>';
+                    html += '<p>Solution: Call unpause() from owner wallet</p>';
+                    hasIssues = true;
+                }
+
+                if (status === 0) { // Pending
+                    html += '<p class="warning">⚠️ Round is in PENDING status</p>';
+                    html += `<p>Current participants: ${uniqueWallets.toString()}</p>`;
+                    html += `<p>Required: ${minParticipants.toString()}</p>`;
+                    if (uniqueWallets.lt(minParticipants)) {
+                        html += `<p class="error">❌ Need ${minParticipants.sub(uniqueWallets).toString()} more participant(s)</p>`;
+                        html += '<p><strong>Solution:</strong> Get another wallet to buy tickets!</p>';
+                        hasIssues = true;
+                    }
+                }
+
+                if (status === 1) { // Active
+                    if (currentTime < endTime.toNumber()) {
+                        html += '<p class="info">⏰ Round is ACTIVE but not ready to close yet</p>';
+                        const remaining = endTime.toNumber() - currentTime;
+                        html += `<p>Time remaining: ${Math.floor(remaining / 60)} minutes</p>`;
+                    } else {
+                        if (uniqueWallets.lt(minParticipants)) {
+                            html += '<p class="error">❌ Timer expired but not enough participants!</p>';
+                            html += `<p>Have: ${uniqueWallets.toString()}, Need: ${minParticipants.toString()}</p>`;
+                            hasIssues = true;
+                        } else {
+                            html += '<p class="success">✅ Round is ready to close!</p>';
+                            if (isPaused) {
+                                html += '<p class="error">❌ But contract is PAUSED!</p>';
+                            }
+                        }
+                    }
+                }
+
+                if (status === 2) { // WaitingVRF
+                    html += '<p class="info">⏳ Round is waiting for VRF response</p>';
+                    html += '<p>Check VRF subscription has LINK balance</p>';
+                    html += `<p><a href="https://vrf.chain.link/bnb-chain-testnet" target="_blank">Check VRF Subscription</a></p>`;
+                }
+
+                if (!hasIssues && status === 1 && currentTime >= endTime.toNumber()) {
+                    html += '<p class="success">✅ Everything looks good! You should be able to close the round.</p>';
+                    html += '<p>If closeRound() still fails, check:</p>';
+                    html += '<ul>';
+                    html += '<li>VRF subscription has LINK balance (need at least 0.5 LINK)</li>';
+                    html += '<li>Contract is added as VRF consumer</li>';
+                    html += '<li>You have enough BNB for gas (~0.01 BNB)</li>';
+                    html += '</ul>';
+                }
+
+                html += '</div>';
+
+                resultsDiv.innerHTML = html;
+
+            } catch (error) {
+                resultsDiv.innerHTML = `<div class="section"><h2 class="error">❌ Error</h2><pre>${error.message}</pre><p>Make sure you're connected to BNB Testnet!</p></div>`;
+            }
+        }
+
+        // Auto-run on load
+        window.onload = runDiagnostics;
+    </script>
+</body>
+</html>
