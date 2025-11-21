@@ -1,0 +1,12 @@
+{
+  "name": "blue-raffle-diagnostics",
+  "version": "1.0.0",
+  "description": "Blue Raffle Dapp diagnostic tools",
+  "type": "module",
+  "scripts": {
+    "diagnose": "node diagnose.js"
+  },
+  "dependencies": {
+    "ethers": "^6.9.0"
+  }
+}
