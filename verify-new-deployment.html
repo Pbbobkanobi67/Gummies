@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Verify New BlueRaffle Deployment</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #2c3e50;
+            border-bottom: 3px solid #3498db;
+            padding-bottom: 10px;
+        }
+        .info {
+            background: #e8f4f8;
+            padding: 15px;
+            border-left: 4px solid #3498db;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+        .success {
+            background: #d4edda;
+            border-left: 4px solid #28a745;
+            color: #155724;
+        }
+        .error {
+            background: #f8d7da;
+            border-left: 4px solid #dc3545;
+            color: #721c24;
+        }
+        .result {
+            margin: 10px 0;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 4px;
+            font-family: monospace;
+        }
+        button {
+            background: #3498db;
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            font-size: 16px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 10px 5px;
+        }
+        button:hover {
+            background: #2980b9;
+        }
+        button:disabled {
+            background: #95a5a6;
+            cursor: not-allowed;
+        }
+        .loading {
+            color: #f39c12;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 Verify New BlueRaffle Deployment</h1>
+
+        <div class="info">
+            <strong>New Contract:</strong> 0x9df7397f1a8b01ea9bc850bf04e3710e4667b070<br>
+            <strong>Network:</strong> BNB Chain Testnet
+        </div>
+
+        <button id="verifyBtn" onclick="verifyDeployment()">Verify Deployment</button>
+
+        <div id="results"></div>
+    </div>
+
+    <script>
+        const CONTRACT_ADDRESS = "0x9df7397f1a8b01ea9bc850bf04e3710e4667b070";
+        const RPC_URL = "https://data-seed-prebsc-1-s1.binance.org:8545";
+
+        const ABI = [
+            "function owner() view returns (address)",
+            "function currentRoundId() view returns (uint256)",
+            "function paused() view returns (bool)",
+            "function minParticipants() view returns (uint256)",
+            "function vrfCoordinator() view returns (address)",
+            "function subscriptionId() view returns (uint256)",
+            "function keyHash() view returns (bytes32)",
+            "function blueToken() view returns (address)",
+            "function treasuryWallet() view returns (address)",
+            "function developerWallet() view returns (address)",
+            "function getCurrentRoundInfo() view returns (uint256 roundId, uint256 startTime, uint256 endTime, uint256 prizePool, uint256 totalTickets, uint256 uniqueWallets, uint8 status)"
+        ];
+
+        let ethersLoaded = false;
+        const cdns = [
+            'https://cdn.ethers.io/lib/ethers-5.7.2.umd.min.js',
+            'https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js',
+            'https://unpkg.com/ethers@5.7.2/dist/ethers.umd.min.js'
+        ];
+        let cdnAttempt = 0;
+
+        function loadEthers() {
+            const script = document.createElement('script');
+            script.src = cdns[cdnAttempt];
+            script.onload = function() {
+                if (typeof ethers !== 'undefined') {
+                    ethersLoaded = true;
+                    document.getElementById('verifyBtn').disabled = false;
+                    verifyDeployment();
+                }
+            };
+            script.onerror = function() {
+                cdnAttempt++;
+                if (cdnAttempt < cdns.length) {
+                    loadEthers();
+                } else {
+                    showResult('❌ Failed to load ethers.js from all CDNs', 'error');
+                }
+            };
+            document.head.appendChild(script);
+        }
+
+        function showResult(message, type = 'info') {
+            const div = document.createElement('div');
+            div.className = `info ${type}`;
+            div.innerHTML = message;
+            document.getElementById('results').appendChild(div);
+        }
+
+        async function verifyDeployment() {
+            if (!ethersLoaded) {
+                showResult('Loading ethers.js...', 'loading');
+                return;
+            }
+
+            document.getElementById('results').innerHTML = '';
+            showResult('🔄 Connecting to BNB Testnet...', 'info');
+
+            try {
+                const provider = new ethers.providers.JsonRpcProvider(RPC_URL);
+                const contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, provider);
+
+                showResult('✅ Connected! Testing contract functions...', 'success');
+
+                // Test 1: Owner
+                try {
+                    const owner = await contract.owner();
+                    showResult(`✅ Owner: ${owner}`, 'success');
+                } catch (e) {
+                    showResult(`❌ Owner call failed: ${e.message}`, 'error');
+                }
+
+                // Test 2: VRF Coordinator
+                try {
+                    const coordinator = await contract.vrfCoordinator();
+                    const expected = "0xDA3b641D438362C440Ac5458c57e00a712b66700";
+                    if (coordinator.toLowerCase() === expected.toLowerCase()) {
+                        showResult(`✅ VRF Coordinator: ${coordinator} (CORRECT v2.5)`, 'success');
+                    } else {
+                        showResult(`❌ VRF Coordinator: ${coordinator} (WRONG! Should be ${expected})`, 'error');
+                    }
+                } catch (e) {
+                    showResult(`❌ VRF Coordinator call failed: ${e.message}`, 'error');
+                }
+
+                // Test 3: Subscription ID
+                try {
+                    const subId = await contract.subscriptionId();
+                    const expected = "26655927599451290729520880429262733726305991805472180956508373717196718435172";
+                    if (subId.toString() === expected) {
+                        showResult(`✅ Subscription ID: ${subId} (CORRECT)`, 'success');
+                    } else {
+                        showResult(`❌ Subscription ID: ${subId} (WRONG! Should be ${expected})`, 'error');
+                    }
+                } catch (e) {
+                    showResult(`❌ Subscription ID call failed: ${e.message}`, 'error');
+                }
+
+                // Test 4: Key Hash
+                try {
+                    const keyHash = await contract.keyHash();
+                    const expected = "0x8596b430971ac45bdf6088665b9ad8e8630c9d5049ab54b14dff711bee7c0e26";
+                    if (keyHash.toLowerCase() === expected.toLowerCase()) {
+                        showResult(`✅ Key Hash: ${keyHash} (CORRECT v2.5)`, 'success');
+                    } else {
+                        showResult(`❌ Key Hash: ${keyHash} (WRONG! Should be ${expected})`, 'error');
+                    }
+                } catch (e) {
+                    showResult(`❌ Key Hash call failed: ${e.message}`, 'error');
+                }
+
+                // Test 5: Current Round
+                try {
+                    const roundId = await contract.currentRoundId();
+                    showResult(`✅ Current Round ID: ${roundId}`, 'success');
+                } catch (e) {
+                    showResult(`❌ Current Round ID call failed: ${e.message}`, 'error');
+                }
+
+                // Test 6: Paused
+                try {
+                    const paused = await contract.paused();
+                    showResult(`✅ Contract Paused: ${paused}`, 'success');
+                } catch (e) {
+                    showResult(`❌ Paused call failed: ${e.message}`, 'error');
+                }
+
+                // Test 7: Min Participants
+                try {
+                    const minPart = await contract.minParticipants();
+                    showResult(`✅ Min Participants: ${minPart}`, 'success');
+                } catch (e) {
+                    showResult(`❌ Min Participants call failed: ${e.message}`, 'error');
+                }
+
+                // Test 8: Treasury Wallet
+                try {
+                    const treasury = await contract.treasuryWallet();
+                    const expected = "0x5F55f9bBaBe64c4b9070655DEC8DB6519EbdDBf2";
+                    if (treasury.toLowerCase() === expected.toLowerCase()) {
+                        showResult(`✅ Treasury Wallet: ${treasury} (CORRECT)`, 'success');
+                    } else {
+                        showResult(`⚠️ Treasury Wallet: ${treasury} (Expected ${expected})`, 'info');
+                    }
+                } catch (e) {
+                    showResult(`❌ Treasury Wallet call failed: ${e.message}`, 'error');
+                }
+
+                // Test 9: Developer Wallet
+                try {
+                    const developer = await contract.developerWallet();
+                    const expected = "0x5F55f9bBaBe64c4b9070655DEC8DB6519EbdDBf2";
+                    if (developer.toLowerCase() === expected.toLowerCase()) {
+                        showResult(`✅ Developer Wallet: ${developer} (CORRECT)`, 'success');
+                    } else {
+                        showResult(`⚠️ Developer Wallet: ${developer} (Expected ${expected})`, 'info');
+                    }
+                } catch (e) {
+                    showResult(`❌ Developer Wallet call failed: ${e.message}`, 'error');
+                }
+
+                // Test 10: Round Info
+                try {
+                    const roundInfo = await contract.getCurrentRoundInfo();
+                    const statusNames = ['Pending', 'Active', 'WaitingVRF', 'Closed'];
+                    showResult(`✅ Round Info:<br>
+                        &nbsp;&nbsp;Round ID: ${roundInfo.roundId}<br>
+                        &nbsp;&nbsp;Status: ${statusNames[roundInfo.status]}<br>
+                        &nbsp;&nbsp;Participants: ${roundInfo.uniqueWallets}<br>
+                        &nbsp;&nbsp;Prize Pool: ${ethers.utils.formatEther(roundInfo.prizePool)} BLUE<br>
+                        &nbsp;&nbsp;Total Tickets: ${ethers.utils.formatEther(roundInfo.totalTickets)} BLUE`, 'success');
+                } catch (e) {
+                    showResult(`❌ Round Info call failed: ${e.message}`, 'error');
+                }
+
+                showResult(`<br><strong>🎉 VERIFICATION COMPLETE!</strong><br><br>
+                    If all VRF settings show ✅ CORRECT, your contract is ready to use!<br>
+                    The old contract issues are fixed!`, 'success');
+
+            } catch (error) {
+                showResult(`❌ Error: ${error.message}`, 'error');
+            }
+        }
+
+        // Auto-load ethers.js on page load
+        window.onload = function() {
+            document.getElementById('verifyBtn').disabled = true;
+            loadEthers();
+        };
+    </script>
+</body>
+</html>
