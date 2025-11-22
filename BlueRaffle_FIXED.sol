@@ -201,7 +201,7 @@ contract BlueRaffle is VRFConsumerBaseV2, Ownable, ReentrancyGuard {
 
         uint256 requestId = vrfCoordinator.requestRandomWords(
             keyHash,
-            uint64(subscriptionId),
+            subscriptionId,
             requestConfirmations,
             callbackGasLimit,
             1
