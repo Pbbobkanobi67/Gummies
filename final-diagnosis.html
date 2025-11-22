@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Final Diagnosis</title>
+    <style>
+        body { font-family: monospace; padding: 20px; background: #000; color: #0f0; }
+        h1 { color: #0ff; }
+        .info { margin: 10px 0; padding: 10px; background: #111; border-left: 3px solid #0f0; }
+        .error { border-left-color: #f00; color: #f00; }
+        .warning { border-left-color: #ff0; color: #ff0; }
+        button { background: #0f0; color: #000; padding: 15px; font-size: 16px; margin: 10px 0; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <h1>Blue Raffle Final Diagnosis</h1>
+    <button onclick="diagnose()">Run Full Diagnosis</button>
+    <div id="output"></div>
+
+    <script src="https://unpkg.com/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+    <script>
+        const CONTRACT = "0x9df7397f1a8b01ea9bc850bf04e3710e4667b070";
+
+        function log(msg, type = 'info') {
+            const div = document.createElement('div');
+            div.className = type;
+            div.innerHTML = msg;
+            document.getElementById('output').appendChild(div);
+        }
+
+        async function diagnose() {
+            document.getElementById('output').innerHTML = '';
+
+            try {
+                if (!window.ethereum) {
+                    log('❌ No wallet detected', 'error');
+                    return;
+                }
+
+                await window.ethereum.request({ method: 'eth_requestAccounts' });
+                const provider = new ethers.providers.Web3Provider(window.ethereum);
+                const signer = provider.getSigner();
+
+                const abi = [
+                    "function paused() view returns (bool)",
+                    "function currentRoundId() view returns (uint256)",
+                    "function rounds(uint256) view returns (uint256 roundId, uint256 startTime, uint256 endTime, uint256 prizePool, uint256 totalTickets, uint256 uniqueWallets, address winner, address closer, uint256 closeReward, uint8 status, uint256 vrfRequestId, bool seeded)",
+                    "function minParticipants() view returns (uint256)",
+                    "function closeRound()"
+                ];
+
+                const contract = new ethers.Contract(CONTRACT, abi, provider);
+                const contractWithSigner = new ethers.Contract(CONTRACT, abi, signer);
+
+                log('🔍 CHECKING CONTRACT STATE...');
+                log('');
+
+                // Check 1: Paused
+                const isPaused = await contract.paused();
+                log(`Contract Paused: ${isPaused}`, isPaused ? 'error' : 'info');
+
+                // Check 2: Round info
+                const roundId = await contract.currentRoundId();
+                log(`Current Round: ${roundId}`);
+
+                const round = await contract.rounds(roundId);
+                const statusNames = ['Pending', 'Active', 'WaitingVRF', 'Closed'];
+                const status = statusNames[round.status];
+
+                log('');
+                log(`Round Status: ${status}`, status === 'Active' ? 'info' : 'warning');
+                log(`Participants: ${round.uniqueWallets.toString()}`);
+                log(`Start: ${new Date(round.startTime * 1000).toLocaleString()}`);
+                log(`End: ${new Date(round.endTime * 1000).toLocaleString()}`);
+
+                const now = Math.floor(Date.now() / 1000);
+                const timeLeft = round.endTime - now;
+                log(`Time: ${timeLeft > 0 ? timeLeft + 's remaining' : 'Ended ' + (-timeLeft) + 's ago'}`);
+
+                const minPart = await contract.minParticipants();
+                log(`Min Participants: ${minPart}`);
+
+                log('');
+                log('🔍 DIAGNOSIS:');
+
+                let canClose = true;
+
+                if (isPaused) {
+                    log('❌ CONTRACT IS PAUSED - this is the problem!', 'error');
+                    canClose = false;
+                }
+
+                if (status !== 'Active') {
+                    log(`❌ Round is ${status}, not Active`, 'error');
+                    canClose = false;
+                }
+
+                if (timeLeft > 0) {
+                    log(`❌ Round hasn't ended (${timeLeft}s left)`, 'error');
+                    canClose = false;
+                }
+
+                if (round.uniqueWallets < minPart) {
+                    log(`❌ Not enough participants (${round.uniqueWallets} < ${minPart})`, 'error');
+                    canClose = false;
+                }
+
+                if (canClose) {
+                    log('');
+                    log('✅ ALL CONDITIONS MET!');
+                    log('Attempting to close round...');
+
+                    try {
+                        const tx = await contractWithSigner.closeRound({ gasLimit: 500000 });
+                        log(`✅ TX Sent: ${tx.hash}`);
+                        log('⏳ Waiting for confirmation...');
+                        await tx.wait();
+                        log('✅ ROUND CLOSED! Winner will be picked by VRF in 1-2 mins');
+                    } catch (e) {
+                        log('', 'error');
+                        log('❌ CLOSE ROUND FAILED:', 'error');
+                        log(`Error: ${e.message}`, 'error');
+                        if (e.reason) log(`Reason: ${e.reason}`, 'error');
+                        if (e.data) log(`Data: ${e.data}`, 'error');
+                    }
+                } else {
+                    log('');
+                    log('⚠️ CANNOT CLOSE - Fix issues above first', 'warning');
+                }
+
+            } catch (error) {
+                log('❌ ERROR: ' + error.message, 'error');
+                console.error(error);
+            }
+        }
+    </script>
+</body>
+</html>
