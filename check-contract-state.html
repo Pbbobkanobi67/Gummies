@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Check Contract State</title>
+    <style>
+        body { font-family: monospace; padding: 20px; background: #1e1e1e; color: #fff; }
+        .result { margin: 10px 0; padding: 10px; background: #2d2d2d; border-left: 3px solid #4CAF50; }
+        .error { border-left-color: #f44336; }
+        .warning { border-left-color: #ff9800; }
+    </style>
+</head>
+<body>
+    <h1>Contract State Checker</h1>
+    <div id="output"></div>
+
+    <script>
+        const CONTRACT = "0x9df7397f1a8b01ea9bc850bf04e3710e4667b070";
+        const RPC = "https://data-seed-prebsc-1-s1.binance.org:8545";
+
+        const ABI = [
+            "function currentRoundId() view returns (uint256)",
+            "function rounds(uint256) view returns (uint256 roundId, uint256 startTime, uint256 endTime, uint256 prizePool, uint256 totalTickets, uint256 uniqueWallets, address winner, address closer, uint256 closeReward, uint8 status, uint256 vrfRequestId, bool seeded)",
+            "function paused() view returns (bool)",
+            "function minParticipants() view returns (uint256)",
+            "function canCloseRound() view returns (bool, uint256, string)",
+            "function vrfCoordinator() view returns (address)",
+            "function subscriptionId() view returns (uint256)",
+            "function keyHash() view returns (bytes32)",
+            "function getRoundParticipants(uint256) view returns (address[])"
+        ];
+
+        function log(msg, type = 'result') {
+            const div = document.createElement('div');
+            div.className = type;
+            div.innerHTML = msg;
+            document.getElementById('output').appendChild(div);
+        }
+
+        async function check() {
+            const script = document.createElement('script');
+            script.src = 'https://cdn.ethers.io/lib/ethers-5.7.2.umd.min.js';
+            script.onload = async function() {
+                try {
+                    log('🔍 Connecting to contract...');
+                    const provider = new ethers.providers.JsonRpcProvider(RPC);
+                    const contract = new ethers.Contract(CONTRACT, ABI, provider);
+
+                    log(`📍 Contract: ${CONTRACT}`);
+
+                    // Check VRF settings
+                    const coordinator = await contract.vrfCoordinator();
+                    log(`VRF Coordinator: ${coordinator}`);
+                    if (coordinator.toLowerCase() !== "0xda3b641d438362c440ac5458c57e00a712b66700") {
+                        log('❌ WRONG VRF COORDINATOR!', 'error');
+                    }
+
+                    const subId = await contract.subscriptionId();
+                    log(`Subscription ID: ${subId}`);
+                    if (subId.toString() !== "26655927599451290729520880429262733726305991805472180956508373717196718435172") {
+                        log('❌ WRONG SUBSCRIPTION ID!', 'error');
+                    }
+
+                    const keyHash = await contract.keyHash();
+                    log(`Key Hash: ${keyHash}`);
+
+                    // Check current round
+                    const roundId = await contract.currentRoundId();
+                    log(`<br>📊 Current Round: ${roundId}`);
+
+                    const round = await contract.rounds(roundId);
+                    const statusNames = ['Pending', 'Active', 'WaitingVRF', 'Closed'];
+
+                    log(`<br>Round ${roundId} Details:`);
+                    log(`Status: ${statusNames[round.status]}`);
+                    log(`Start Time: ${round.startTime} (${new Date(round.startTime * 1000).toLocaleString()})`);
+                    log(`End Time: ${round.endTime} (${new Date(round.endTime * 1000).toLocaleString()})`);
+                    log(`Participants: ${round.uniqueWallets}`);
+                    log(`Prize Pool: ${ethers.utils.formatEther(round.prizePool)} BLUE`);
+                    log(`Total Tickets: ${ethers.utils.formatEther(round.totalTickets)} BLUE`);
+
+                    const now = Math.floor(Date.now() / 1000);
+                    const timeLeft = round.endTime - now;
+                    if (timeLeft > 0) {
+                        log(`⏱️ Time Remaining: ${timeLeft} seconds (${Math.floor(timeLeft / 60)} minutes)`, 'warning');
+                    } else {
+                        log(`✅ Round ended ${-timeLeft} seconds ago`);
+                    }
+
+                    // Check participants
+                    try {
+                        const participants = await contract.getRoundParticipants(roundId);
+                        log(`<br>👥 Participants (${participants.length}):`);
+                        participants.forEach((addr, i) => {
+                            log(`${i + 1}. ${addr}`);
+                        });
+                    } catch (e) {
+                        log(`Could not get participants: ${e.message}`, 'error');
+                    }
+
+                    // Check if can close
+                    const minPart = await contract.minParticipants();
+                    log(`<br>Min Participants Required: ${minPart}`);
+
+                    const paused = await contract.paused();
+                    log(`Contract Paused: ${paused}`);
+
+                    try {
+                        const [canClose, reward, reason] = await contract.canCloseRound();
+                        log(`<br>🎯 Can Close Round: ${canClose}`);
+                        log(`Reward: ${ethers.utils.formatEther(reward)} BLUE`);
+                        log(`Reason: ${reason}`);
+
+                        if (!canClose) {
+                            log(`<br>⚠️ CANNOT CLOSE: ${reason}`, 'warning');
+                        }
+                    } catch (e) {
+                        log(`❌ canCloseRound() failed: ${e.message}`, 'error');
+                    }
+
+                    // Diagnose why it might fail
+                    log(`<br>🔍 DIAGNOSIS:`);
+                    if (round.status !== 1) {
+                        log(`❌ Round is not Active (status = ${statusNames[round.status]})`, 'error');
+                    }
+                    if (timeLeft > 0) {
+                        log(`❌ Round has not ended yet (${timeLeft}s remaining)`, 'error');
+                    }
+                    if (round.uniqueWallets < minPart) {
+                        log(`❌ Not enough participants (${round.uniqueWallets} < ${minPart})`, 'error');
+                    }
+                    if (round.status === 1 && timeLeft <= 0 && round.uniqueWallets >= minPart) {
+                        log(`✅ All conditions met - closeRound() should work!`);
+                        log(`<br>If closeRound() still fails, the issue is with VRF or wallet connection`, 'warning');
+                    }
+
+                } catch (error) {
+                    log(`❌ Error: ${error.message}`, 'error');
+                    console.error(error);
+                }
+            };
+            document.head.appendChild(script);
+        }
+
+        window.onload = check;
+    </script>
+</body>
+</html>
