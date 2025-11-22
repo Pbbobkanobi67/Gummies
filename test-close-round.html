@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Close Round</title>
+    <style>
+        body { font-family: monospace; padding: 20px; background: #1e1e1e; color: #0f0; }
+        button { background: #0a0; color: #000; padding: 15px 30px; font-size: 18px; cursor: pointer; margin: 10px; }
+        .output { margin: 20px 0; padding: 15px; background: #2d2d2d; border: 1px solid #0a0; }
+        .error { color: #f00; }
+    </style>
+</head>
+<body>
+    <h1>Close Round Diagnostic Tool</h1>
+    <button onclick="checkAndClose()">Check Round & Try Close</button>
+    <div id="output"></div>
+
+    <script src="https://cdn.ethers.io/lib/ethers-5.7.2.umd.min.js"></script>
+    <script>
+        const CONTRACT_ADDRESS = "0x9df7397f1a8b01ea9bc850bf04e3710e4667b070";
+        const ABI = [
+            "function currentRoundId() view returns (uint256)",
+            "function rounds(uint256) view returns (uint256 roundId, uint256 startTime, uint256 endTime, uint256 prizePool, uint256 totalTickets, uint256 uniqueWallets, address winner, address closer, uint256 closeReward, uint8 status, uint256 vrfRequestId, bool seeded)",
+            "function closeRound() nonpayable",
+            "function minParticipants() view returns (uint256)",
+            "function emergencyActivateRound(uint256) nonpayable"
+        ];
+
+        function log(msg, isError = false) {
+            const div = document.getElementById('output');
+            const p = document.createElement('div');
+            p.className = isError ? 'error' : '';
+            p.innerHTML = msg;
+            div.appendChild(p);
+        }
+
+        async function checkAndClose() {
+            document.getElementById('output').innerHTML = '';
+
+            try {
+                if (!window.ethereum) {
+                    log('❌ No wallet detected!', true);
+                    return;
+                }
+
+                await window.ethereum.request({ method: 'eth_requestAccounts' });
+                const provider = new ethers.providers.Web3Provider(window.ethereum);
+                const signer = provider.getSigner();
+                const contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, signer);
+
+                log('🔍 Checking contract state...');
+
+                const roundId = await contract.currentRoundId();
+                log(`Current Round ID: ${roundId}`);
+
+                const round = await contract.rounds(roundId);
+                const statusNames = ['Pending', 'Active', 'WaitingVRF', 'Closed'];
+
+                log(`<br>📊 Round ${roundId} Status: <strong>${statusNames[round.status]}</strong>`);
+                log(`Start Time: ${new Date(round.startTime * 1000).toLocaleString()}`);
+                log(`End Time: ${new Date(round.endTime * 1000).toLocaleString()}`);
+                log(`Participants: ${round.uniqueWallets}`);
+                log(`Prize Pool: ${ethers.utils.formatEther(round.prizePool)} BLUE`);
+
+                const minPart = await contract.minParticipants();
+                log(`Min Participants: ${minPart}`);
+
+                const now = Math.floor(Date.now() / 1000);
+                const timeLeft = round.endTime - now;
+
+                log(`<br>⏱️ Time: ${timeLeft > 0 ? `${timeLeft}s remaining` : `Ended ${-timeLeft}s ago`}`);
+
+                // Diagnosis
+                log('<br>🔍 DIAGNOSIS:');
+
+                if (round.status != 1) {
+                    log(`❌ Round status is ${statusNames[round.status]}, not Active!`, true);
+
+                    if (round.status == 0) {
+                        log('<br>⚠️ Round is PENDING - it never activated!', true);
+                        log('This means the 2 participants bought tickets but the round didn\'t start.');
+                        log('Need to call emergencyActivateRound()');
+
+                        const activate = confirm('Round is stuck in Pending. Activate it now?');
+                        if (activate) {
+                            log('<br>🔧 Calling emergencyActivateRound(300)...');
+                            try {
+                                const tx = await contract.emergencyActivateRound(300, {
+                                    gasLimit: 200000
+                                });
+                                log(`✅ Transaction sent: ${tx.hash}`);
+                                log('⏳ Waiting for confirmation...');
+                                await tx.wait();
+                                log('✅ Round activated! Wait 5 minutes then try closeRound()');
+                            } catch (e) {
+                                log(`❌ Emergency activation failed: ${e.message}`, true);
+                                if (e.data) log(`Error data: ${e.data}`, true);
+                            }
+                        }
+                        return;
+                    }
+
+                    if (round.status == 3) {
+                        log('Round is already Closed. Check if new round started.', true);
+                        return;
+                    }
+                }
+
+                if (timeLeft > 0) {
+                    log(`❌ Round hasn't ended yet (${timeLeft}s remaining)`, true);
+                    return;
+                }
+
+                if (round.uniqueWallets < minPart) {
+                    log(`❌ Not enough participants (${round.uniqueWallets} < ${minPart})`, true);
+                    return;
+                }
+
+                log('<br>✅ All conditions met! Attempting closeRound()...');
+
+                try {
+                    // Estimate gas first
+                    const gasEstimate = await contract.estimateGas.closeRound();
+                    log(`Gas estimate: ${gasEstimate.toString()}`);
+
+                    const tx = await contract.closeRound({
+                        gasLimit: gasEstimate.mul(120).div(100) // 20% buffer
+                    });
+
+                    log(`✅ Transaction sent: ${tx.hash}`);
+                    log('⏳ Waiting for confirmation...');
+
+                    const receipt = await tx.wait();
+                    log(`✅ Round closed! Gas used: ${receipt.gasUsed.toString()}`);
+                    log('VRF will pick winner in ~1-2 minutes');
+
+                } catch (e) {
+                    log(`<br>❌ closeRound() FAILED:`, true);
+                    log(`Error: ${e.message}`, true);
+                    if (e.data) log(`Data: ${e.data}`, true);
+                    if (e.error) log(`Inner error: ${JSON.stringify(e.error)}`, true);
+
+                    log('<br>This could mean:', true);
+                    log('1. VRF subscription issue (even though it looks correct)', true);
+                    log('2. VRF coordinator is rejecting the request', true);
+                    log('3. Gas limit issue', true);
+                }
+
+            } catch (error) {
+                log(`❌ Error: ${error.message}`, true);
+                console.error(error);
+            }
+        }
+    </script>
+</body>
+</html>
