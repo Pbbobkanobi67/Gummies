@@ -52,7 +52,7 @@ async function main() {
     address: raffleAddress,
     network: 'bsc_testnet',
     chainId: 97,
-    rpcUrl: 'https://data-seed-prebsc-1-s1.binance.org:8545',
+    rpcUrl: 'https://bsc-testnet-rpc.publicnode.com',
     explorerUrl: 'https://testnet.bscscan.com',
     deployer: deployer.address,
     deployedAt: new Date().toISOString(),

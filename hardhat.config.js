@@ -17,9 +17,9 @@ export default {
   },
   networks: {
     bsc_testnet: {
-      url: 'https://rpc.ankr.com/bsc_testnet_chapel',
+      url: 'https://bsc-testnet-rpc.publicnode.com',
       chainId: 97,
-      accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [],
+      accounts: process.env.PRIVATE_KEY ? [`0x${process.env.PRIVATE_KEY}`] : [],
       gasPrice: 10000000000, // 10 gwei
       timeout: 60000,
     },
