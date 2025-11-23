@@ -1,16 +1,29 @@
 {
-  "name": "blue-raffle-diagnostics",
-  "version": "1.0.0",
-  "description": "Blue Raffle Dapp diagnostic tools",
+  "name": "blue-raffle-blockhash",
+  "version": "2.0.0",
+  "description": "Modular blockchain raffle using blockhash randomness",
   "type": "module",
   "scripts": {
-    "diagnose": "node diagnose.js"
+    "compile": "hardhat compile",
+    "deploy": "hardhat run scripts/deploy.js --network bsc_testnet",
+    "deploy:local": "hardhat run scripts/deploy.js --network hardhat",
+    "test": "hardhat test",
+    "node": "hardhat node",
+    "clean": "hardhat clean"
   },
+  "keywords": [
+    "raffle",
+    "blockchain",
+    "hardhat",
+    "solidity",
+    "bsc"
+  ],
   "devDependencies": {
-    "@nomicfoundation/hardhat-ethers": "^4.0.3",
-    "@openzeppelin/contracts": "^5.4.0",
-    "dotenv": "^17.2.3",
-    "ethers": "^6.15.0",
-    "hardhat": "^3.0.15"
+    "@nomicfoundation/hardhat-ethers": "^3.0.5",
+    "@nomicfoundation/hardhat-verify": "^2.0.3",
+    "@openzeppelin/contracts": "^5.0.1",
+    "dotenv": "^16.3.1",
+    "ethers": "^6.10.0",
+    "hardhat": "^2.19.4"
   }
 }
