@@ -17,10 +17,11 @@ export default {
   },
   networks: {
     bsc_testnet: {
-      url: 'https://data-seed-prebsc-1-s1.binance.org:8545',
+      url: 'https://rpc.ankr.com/bsc_testnet_chapel',
       chainId: 97,
       accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [],
       gasPrice: 10000000000, // 10 gwei
+      timeout: 60000,
     },
     hardhat: {
       chainId: 1337,
