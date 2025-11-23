@@ -6,6 +6,10 @@ import { TicketPurchase } from './components/PlayerView/TicketPurchase';
 import { WinnerAnnouncement } from './components/PlayerView/WinnerAnnouncement';
 import { DrawControls } from './components/PlayerView/DrawControls';
 import { AdminPanel } from './components/AdminPanel/AdminPanel';
+import { PlayerStats } from './components/Analytics/PlayerStats';
+import { RoundHistory } from './components/Analytics/RoundHistory';
+import { Leaderboard } from './components/Analytics/Leaderboard';
+import { LiveAnalytics } from './components/Analytics/LiveAnalytics';
 
 function App() {
   const {
@@ -158,6 +162,23 @@ function App() {
               account={account}
               signer={signer}
             />
+
+            {/* Analytics & Stats Section */}
+            <div className="analytics-section">
+              <h2 style={{ textAlign: 'center', marginBottom: '30px' }}>📊 Analytics & Stats</h2>
+
+              {/* Live Analytics */}
+              <LiveAnalytics contract={contract} />
+
+              {/* Player Stats (only show if connected) */}
+              {account && <PlayerStats contract={contract} account={account} />}
+
+              {/* Leaderboard */}
+              <Leaderboard contract={contract} />
+
+              {/* Round History */}
+              <RoundHistory contract={contract} account={account} />
+            </div>
           </>
         ) : isConnected && !isCorrectNetwork ? (
           <div className="raffle-card" style={{ textAlign: 'center' }}>
