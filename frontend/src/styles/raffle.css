@@ -408,3 +408,48 @@ body {
 .play-again-prompt .btn {
   margin: 0 10px;
 }
+
+/* Admin Panel Sections */
+.admin-section {
+  background: rgba(245, 158, 11, 0.05);
+  padding: 25px;
+  border-radius: 12px;
+  margin-bottom: 25px;
+  border-left: 4px solid var(--warning);
+}
+
+.admin-section h3 {
+  color: var(--warning);
+  margin-bottom: 20px;
+  font-size: 1.3rem;
+}
+
+.admin-section h4 {
+  color: var(--text-light);
+  margin-bottom: 12px;
+  font-size: 1.05rem;
+}
+
+.admin-input {
+  width: 100%;
+  padding: 10px;
+  margin: 8px 0;
+  background: var(--bg-dark);
+  color: var(--text-light);
+  border: 2px solid var(--primary-blue);
+  border-radius: 8px;
+  font-size: 0.95rem;
+}
+
+.admin-input:focus {
+  outline: none;
+  border-color: var(--light-blue);
+}
+
+.admin-section label {
+  display: block;
+  color: var(--text-gray);
+  font-size: 0.9rem;
+  margin-top: 12px;
+  margin-bottom: 4px;
+}
