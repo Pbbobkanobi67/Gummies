@@ -35,6 +35,10 @@ export function DrawControls({ roundInfo, requestDraw, executeDraw, canRequestDr
     }
   };
 
+  // Check if draw has expired
+  const isDrawExpired = roundInfo?.statusCode === 2 && drawStatus.reason &&
+    (drawStatus.reason.includes('expired') || drawStatus.reason.includes('Expired'));
+
   // Only show if round is Active or Drawing
   if (!roundInfo || (roundInfo.statusCode !== 1 && roundInfo.statusCode !== 2)) {
     return null;
@@ -43,6 +47,24 @@ export function DrawControls({ roundInfo, requestDraw, executeDraw, canRequestDr
   return (
     <div className="raffle-card" style={{ marginTop: '20px' }}>
       <h3>Draw Controls</h3>
+
+      {/* Show expired draw warning */}
+      {isDrawExpired && (
+        <div style={{
+          padding: '15px',
+          marginBottom: '15px',
+          backgroundColor: '#7f1d1d',
+          border: '1px solid #dc2626',
+          borderRadius: '8px',
+          color: '#fca5a5'
+        }}>
+          <p style={{ margin: 0, fontWeight: 'bold' }}>⚠️ Draw Request Expired</p>
+          <p style={{ margin: '8px 0 0 0', fontSize: '0.9rem' }}>
+            The draw request has expired and cannot be executed.
+            An admin must cancel this round from the Admin page before starting a new round.
+          </p>
+        </div>
+      )}
 
       {roundInfo.statusCode === 1 && (
         <div>
@@ -68,10 +90,10 @@ export function DrawControls({ roundInfo, requestDraw, executeDraw, canRequestDr
           <button
             className="btn btn-success"
             onClick={handleExecuteDraw}
-            disabled={!drawStatus.canExecute || loading}
+            disabled={!drawStatus.canExecute || loading || isDrawExpired}
             style={{ width: '100%', padding: '15px' }}
           >
-            {loading ? 'Processing...' : 'Execute Draw (Step 2)'}
+            {loading ? 'Processing...' : isDrawExpired ? 'Draw Expired - Cannot Execute' : 'Execute Draw (Step 2)'}
           </button>
           <p style={{ marginTop: '10px', fontSize: '0.9rem', color: '#f59e0b' }}>
             ⚠️ Must wait 2 blocks after requesting draw
