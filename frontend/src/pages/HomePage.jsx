@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { RaffleCard } from '../components/PlayerView/RaffleCard';
 import { TicketPurchase } from '../components/PlayerView/TicketPurchase';
 import { WinnerAnnouncement } from '../components/PlayerView/WinnerAnnouncement';
@@ -21,21 +21,28 @@ export function HomePage({
 }) {
   const [previousWinner, setPreviousWinner] = useState(null);
   const [showWinner, setShowWinner] = useState(false);
+  const shownWinnersRef = useRef(new Set());
 
-  // Check for previous round winner
+  // Check for previous round winner (only show once per round)
   useEffect(() => {
     const checkPreviousWinner = async () => {
       if (roundInfo && roundInfo.roundId && parseInt(roundInfo.roundId) > 1) {
-        const winner = await getPreviousRoundWinner();
-        if (winner && winner.winner !== '0x0000000000000000000000000000000000000000') {
-          setPreviousWinner(winner);
-          setShowWinner(true);
+        const prevRoundId = parseInt(roundInfo.roundId) - 1;
+
+        // Only show if we haven't shown this round's winner yet
+        if (!shownWinnersRef.current.has(prevRoundId)) {
+          const winner = await getPreviousRoundWinner();
+          if (winner && winner.winner !== '0x0000000000000000000000000000000000000000') {
+            setPreviousWinner(winner);
+            setShowWinner(true);
+            shownWinnersRef.current.add(prevRoundId);
+          }
         }
       }
     };
 
     checkPreviousWinner();
-  }, [roundInfo?.roundId]);
+  }, [roundInfo?.roundId, getPreviousRoundWinner]);
 
   const handlePlayAgain = () => {
     setShowWinner(false);
@@ -61,7 +68,7 @@ export function HomePage({
 
   return (
     <>
-      {/* Winner Announcement */}
+      {/* Winner Announcement - Shows only once per round */}
       {showWinner && previousWinner && (
         <WinnerAnnouncement
           winner={previousWinner}
