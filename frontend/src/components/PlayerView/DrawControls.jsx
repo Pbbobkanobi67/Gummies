@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 
-export function DrawControls({ roundInfo, requestDraw, executeDraw, canRequestDraw, canExecuteDraw, loading }) {
+export function DrawControls({ roundInfo, requestDraw, executeDraw, canRequestDraw, canExecuteDraw, loading, contract, signer }) {
   const [drawStatus, setDrawStatus] = useState({ canRequest: false, canExecute: false, reason: '' });
 
   useEffect(() => {
@@ -35,6 +35,21 @@ export function DrawControls({ roundInfo, requestDraw, executeDraw, canRequestDr
     }
   };
 
+  const handleCancelRound = async () => {
+    if (!contract || !signer) return;
+
+    try {
+      setDrawStatus({ ...drawStatus, reason: 'Cancelling round...' });
+      const tx = await contract.cancelRound();
+      await tx.wait();
+      console.log('Round cancelled successfully!');
+      window.location.reload(); // Refresh the page
+    } catch (err) {
+      console.error('Error cancelling round:', err);
+      alert(`Failed to cancel round: ${err.message}`);
+    }
+  };
+
   // Check if draw has expired
   const isDrawExpired = roundInfo?.statusCode === 2 && drawStatus.reason &&
     (drawStatus.reason.includes('expired') || drawStatus.reason.includes('Expired'));
@@ -61,8 +76,17 @@ export function DrawControls({ roundInfo, requestDraw, executeDraw, canRequestDr
           <p style={{ margin: 0, fontWeight: 'bold' }}>⚠️ Draw Request Expired</p>
           <p style={{ margin: '8px 0 0 0', fontSize: '0.9rem' }}>
             The draw request has expired and cannot be executed.
-            An admin must cancel this round from the Admin page before starting a new round.
+            An admin must cancel this round before starting a new round.
           </p>
+          {contract && signer && (
+            <button
+              className="btn btn-secondary"
+              onClick={handleCancelRound}
+              style={{ marginTop: '10px', width: '100%' }}
+            >
+              Cancel This Round (Admin Only)
+            </button>
+          )}
         </div>
       )}
 

@@ -127,6 +127,7 @@ function App() {
                   getPreviousRoundWinner={getPreviousRoundWinner}
                   isConnected={isConnected}
                   isCorrectNetwork={isCorrectNetwork}
+                  signer={signer}
                 />
               }
             />

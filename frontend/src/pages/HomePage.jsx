@@ -18,6 +18,7 @@ export function HomePage({
   getPreviousRoundWinner,
   isConnected,
   isCorrectNetwork,
+  signer,
 }) {
   const [previousWinner, setPreviousWinner] = useState(null);
   const [showWinner, setShowWinner] = useState(false);
@@ -105,6 +106,8 @@ export function HomePage({
         canRequestDraw={canRequestDraw}
         canExecuteDraw={canExecuteDraw}
         loading={loading}
+        contract={contract}
+        signer={signer}
       />
     </>
   );
