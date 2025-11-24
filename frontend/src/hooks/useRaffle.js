@@ -174,7 +174,7 @@ export function useRaffle(provider, signer, account) {
   };
 
   // Check if can request draw
-  const canRequestDraw = async () => {
+  const canRequestDraw = useCallback(async () => {
     if (!contract) return { canRequest: false, reason: 'Contract not loaded' };
 
     try {
@@ -186,10 +186,10 @@ export function useRaffle(provider, signer, account) {
     } catch (err) {
       return { canRequest: false, reason: err.message };
     }
-  };
+  }, [contract]);
 
   // Check if can execute draw
-  const canExecuteDraw = async () => {
+  const canExecuteDraw = useCallback(async () => {
     if (!contract) return { canExecute: false, reason: 'Contract not loaded' };
 
     try {
@@ -201,10 +201,10 @@ export function useRaffle(provider, signer, account) {
     } catch (err) {
       return { canExecute: false, reason: err.message };
     }
-  };
+  }, [contract]);
 
   // Get previous round winner
-  const getPreviousRoundWinner = async () => {
+  const getPreviousRoundWinner = useCallback(async () => {
     if (!contract || !roundInfo) return null;
 
     try {
@@ -221,7 +221,7 @@ export function useRaffle(provider, signer, account) {
       console.error('Error fetching previous round:', err);
       return null;
     }
-  };
+  }, [contract, roundInfo]);
 
   return {
     contract,

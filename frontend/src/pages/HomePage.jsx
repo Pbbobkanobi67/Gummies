@@ -42,7 +42,7 @@ export function HomePage({
     };
 
     checkPreviousWinner();
-  }, [roundInfo?.roundId]); // Removed getPreviousRoundWinner to prevent infinite re-renders
+  }, [roundInfo?.roundId, getPreviousRoundWinner]);
 
   const handlePlayAgain = () => {
     setShowWinner(false);

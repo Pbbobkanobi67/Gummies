@@ -19,7 +19,7 @@ export function DrawControls({ roundInfo, requestDraw, executeDraw, canRequestDr
     checkDrawStatus();
     const interval = setInterval(checkDrawStatus, 3000);
     return () => clearInterval(interval);
-  }, [roundInfo]); // Removed canRequestDraw and canExecuteDraw to prevent infinite re-renders
+  }, [roundInfo, canRequestDraw, canExecuteDraw]);
 
   const handleRequestDraw = async () => {
     const success = await requestDraw();
