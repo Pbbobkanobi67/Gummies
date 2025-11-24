@@ -21,6 +21,7 @@ export function useRaffle(provider, signer, account) {
   // Initialize contract
   useEffect(() => {
     if (signer && contractABI.length > 0) {
+      console.log('🔧 Creating contract with signer');
       const raffleContract = new ethers.Contract(
         contractConfig.address,
         contractABI,
@@ -28,6 +29,7 @@ export function useRaffle(provider, signer, account) {
       );
       setContract(raffleContract);
     } else if (provider && contractABI.length > 0) {
+      console.log('🔧 Creating contract with provider');
       const raffleContract = new ethers.Contract(
         contractConfig.address,
         contractABI,
@@ -39,7 +41,12 @@ export function useRaffle(provider, signer, account) {
 
   // Fetch round info
   const fetchRoundInfo = useCallback(async () => {
-    if (!contract) return;
+    if (!contract) {
+      console.log('⏭️ Skipping fetch - no contract');
+      return;
+    }
+
+    console.log('📡 Fetching round info...', { hasAccount: !!account });
 
     try {
       const info = await contract.getCurrentRoundInfo();
@@ -56,15 +63,17 @@ export function useRaffle(provider, signer, account) {
         timeRemaining: Number(info.timeRemaining),
       };
 
+      console.log('✅ Round info fetched:', roundData.roundId, roundData.status);
       setRoundInfo(roundData);
 
       // Fetch user tickets if connected
       if (account && info.roundId) {
         const tickets = await contract.getUserTickets(info.roundId, account);
         setUserTickets(ethers.formatEther(tickets));
+        console.log('🎟️ User tickets:', ethers.formatEther(tickets));
       }
     } catch (err) {
-      console.error('Error fetching round info:', err);
+      console.error('❌ Error fetching round info:', err);
       setError(err.message);
     }
   }, [contract, account]);
@@ -72,18 +81,12 @@ export function useRaffle(provider, signer, account) {
   // Auto-refresh round info
   useEffect(() => {
     if (contract) {
+      // Immediate fetch when contract is ready
       fetchRoundInfo();
       const interval = setInterval(fetchRoundInfo, 5000); // Refresh every 5 seconds
       return () => clearInterval(interval);
     }
-  }, [contract, fetchRoundInfo]);
-
-  // Force fetch when account connects/changes
-  useEffect(() => {
-    if (contract && account) {
-      fetchRoundInfo();
-    }
-  }, [account, contract, fetchRoundInfo]);
+  }, [contract, account, fetchRoundInfo]); // Add account to trigger re-fetch when wallet connects
 
   // Buy tickets
   const buyTickets = async (blueAmount) => {
