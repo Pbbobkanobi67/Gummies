@@ -78,15 +78,13 @@ export function DrawControls({ roundInfo, requestDraw, executeDraw, canRequestDr
             The draw request has expired and cannot be executed.
             An admin must cancel this round before starting a new round.
           </p>
-          {contract && signer && (
-            <button
-              className="btn btn-secondary"
-              onClick={handleCancelRound}
-              style={{ marginTop: '10px', width: '100%' }}
-            >
-              Cancel This Round (Admin Only)
-            </button>
-          )}
+          <button
+            className="btn btn-secondary"
+            onClick={handleCancelRound}
+            style={{ marginTop: '10px', width: '100%' }}
+          >
+            Cancel This Round (Admin Only)
+          </button>
         </div>
       )}
 
