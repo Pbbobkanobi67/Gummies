@@ -24,16 +24,8 @@ export function ActionBanner({
       const requestStatus = await canRequestDraw();
       const executeStatus = await canExecuteDraw();
 
-      // Check if draw has expired
-      const isExpired = (requestStatus.reason &&
-        (requestStatus.reason.toLowerCase().includes('expired') ||
-         requestStatus.reason.toLowerCase().includes('expire'))) ||
-        (executeStatus.reason &&
-        (executeStatus.reason.toLowerCase().includes('expired') ||
-         executeStatus.reason.toLowerCase().includes('expire')));
-
-      // Hide banner if draw is expired - let the DrawControls component handle it
-      if (isExpired) {
+      // If round is Drawing but execute is false, the draw is expired/failed - don't show banner
+      if (roundInfo.statusCode === 2 && !executeStatus.canExecute) {
         setShowBanner(false);
         return;
       }
@@ -54,11 +46,6 @@ export function ActionBanner({
         } else if (roundInfo.statusCode === 2 && executeStatus.canExecute) {
           setBannerMessage(
             'Draw has been requested! Someone must click "STEP 2: Execute Draw" to reveal the winner and start a new round.'
-          );
-        } else if (roundInfo.statusCode === 2 && !executeStatus.canExecute) {
-          // Draw requested but not ready yet
-          setBannerMessage(
-            'Draw has been requested! Waiting for VRF to be ready (must wait 2 blocks).'
           );
         }
       } else {
