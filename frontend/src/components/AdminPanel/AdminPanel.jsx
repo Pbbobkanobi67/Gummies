@@ -22,7 +22,7 @@ export function AdminPanel({ contract, account, signer }) {
   const [minTickets, setMinTickets] = useState('5');
   const [maxTickets, setMaxTickets] = useState('150');
   const [minParticipants, setMinParticipants] = useState('2');
-  const [roundDuration, setRoundDuration] = useState('300');
+  const [roundDuration, setRoundDuration] = useState('5'); // minutes
   const [treasuryWallet, setTreasuryWallet] = useState('');
   const [developerWallet, setDeveloperWallet] = useState('');
 
@@ -182,11 +182,12 @@ export function AdminPanel({ contract, account, signer }) {
     try {
       setLoading(true);
       setMessage(null);
-      const duration = parseInt(roundDuration);
-      const tx = await contract.setRoundDuration(duration);
+      const durationMinutes = parseInt(roundDuration);
+      const durationSeconds = durationMinutes * 60; // Convert minutes to seconds
+      const tx = await contract.setRoundDuration(durationSeconds);
       await tx.wait();
       await loadAnalytics();
-      setMessage({ type: 'success', text: `Round duration set to ${duration} seconds` });
+      setMessage({ type: 'success', text: `Round duration set to ${durationMinutes} minutes` });
     } catch (err) {
       setMessage({ type: 'error', text: err.shortMessage || err.message });
     } finally {
@@ -369,15 +370,16 @@ export function AdminPanel({ contract, account, signer }) {
 
           <div className="control-group">
             <h4>Round Duration</h4>
-            <label>Duration (seconds)</label>
+            <label>Duration (minutes)</label>
             <input
               type="number"
               value={roundDuration}
               onChange={(e) => setRoundDuration(e.target.value)}
               className="admin-input"
+              min="1"
             />
             <p style={{ fontSize: '0.85rem', color: '#94a3b8' }}>
-              {Math.floor(parseInt(roundDuration || 0) / 60)} minutes
+              {parseInt(roundDuration || 0) * 60} seconds
             </p>
             <button className="btn btn-primary" onClick={handleSetRoundDuration} disabled={loading}>
               Update Duration
