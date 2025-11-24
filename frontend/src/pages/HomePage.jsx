@@ -3,6 +3,7 @@ import { RaffleCard } from '../components/PlayerView/RaffleCard';
 import { TicketPurchase } from '../components/PlayerView/TicketPurchase';
 import { WinnerAnnouncement } from '../components/PlayerView/WinnerAnnouncement';
 import { DrawControls } from '../components/PlayerView/DrawControls';
+import { ActionBanner } from '../components/PlayerView/ActionBanner';
 
 export function HomePage({
   contract,
@@ -77,6 +78,16 @@ export function HomePage({
           onViewRound={handleViewRound}
         />
       )}
+
+      {/* Action Required Banner */}
+      <ActionBanner
+        roundInfo={roundInfo}
+        canRequestDraw={canRequestDraw}
+        canExecuteDraw={canExecuteDraw}
+        requestDraw={requestDraw}
+        executeDraw={executeDraw}
+        loading={loading}
+      />
 
       {/* Raffle Card */}
       <RaffleCard roundInfo={roundInfo} userTickets={userTickets} />
