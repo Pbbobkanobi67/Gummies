@@ -14,40 +14,23 @@ export function ActionBanner({
 
   useEffect(() => {
     const checkState = async () => {
-      // Only show banner when round is Active (time up) or Drawing
-      if (!roundInfo || (roundInfo.statusCode !== 1 && roundInfo.statusCode !== 2)) {
+      // Only show banner when round is Active (statusCode 1)
+      // Don't show when Drawing (statusCode 2) - let DrawControls handle that
+      if (!roundInfo || roundInfo.statusCode !== 1) {
         setShowBanner(false);
         return;
       }
 
-      // Check if we can request or execute draw
+      // Check if we can request draw
       const requestStatus = await canRequestDraw();
-      const executeStatus = await canExecuteDraw();
 
-      // If round is Drawing but execute is false, the draw is expired/failed - don't show banner
-      if (roundInfo.statusCode === 2 && !executeStatus.canExecute) {
-        setShowBanner(false);
-        return;
-      }
-
-      setDrawState({
-        canRequest: requestStatus.canRequest,
-        canExecute: executeStatus.canExecute
-      });
-
-      // Show banner if either action is available
-      if (requestStatus.canRequest || executeStatus.canExecute) {
+      // Show banner only if we can request draw
+      if (requestStatus.canRequest) {
         setShowBanner(true);
-
-        if (roundInfo.statusCode === 1 && requestStatus.canRequest) {
-          setBannerMessage(
-            'The round has ended! Someone must click "STEP 1: Request Draw" to begin the winner selection process.'
-          );
-        } else if (roundInfo.statusCode === 2 && executeStatus.canExecute) {
-          setBannerMessage(
-            'Draw has been requested! Someone must click "STEP 2: Execute Draw" to reveal the winner and start a new round.'
-          );
-        }
+        setDrawState({ canRequest: true, canExecute: false });
+        setBannerMessage(
+          'The round has ended! Someone must click "STEP 1: Request Draw" to begin the winner selection process.'
+        );
       } else {
         setShowBanner(false);
       }
