@@ -61,16 +61,19 @@ function App() {
     <Router>
       <div className="app">
         <div className="container">
-          {/* Header */}
+          {/* Header with Wallet */}
           <div className="header">
-            <h1>🎰 Blue Raffle</h1>
-            <p>Provably Fair | Blockhash Randomness</p>
-          </div>
-
-          {/* Wallet Connection */}
-          <div className="wallet-section">
-            {!isConnected ? (
+            <div style={{ display: 'flex', alignItems: 'center' }}>
+              <span style={{ fontSize: '2rem', marginRight: '12px' }}>🎰</span>
               <div>
+                <h1 style={{ margin: 0, fontSize: '2rem' }}>Blue Raffle</h1>
+                <p style={{ margin: 0, fontSize: '0.9rem', color: '#94a3b8' }}>Provably Fair | Blockhash Randomness</p>
+              </div>
+            </div>
+
+            {/* Wallet Connection */}
+            <div>
+              {!isConnected ? (
                 <button
                   className="btn btn-primary"
                   onClick={connect}
@@ -78,32 +81,33 @@ function App() {
                 >
                   {isConnecting ? 'Connecting...' : 'Connect Wallet'}
                 </button>
-                {walletError && (
-                  <div className="error-message" style={{ marginTop: '20px' }}>
-                    {walletError}
-                  </div>
-                )}
-              </div>
-            ) : (
-              <div className="wallet-info">
-                <span className="wallet-address">
-                  {account.slice(0, 6)}...{account.slice(-4)}
-                </span>
-                {!isCorrectNetwork && (
-                  <button
-                    className="btn btn-secondary"
-                    onClick={switchNetwork}
-                    style={{ marginRight: '10px' }}
-                  >
-                    Switch to BSC Testnet
+              ) : (
+                <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                  <span className="wallet-address">
+                    {account.slice(0, 6)}...{account.slice(-4)}
+                  </span>
+                  {!isCorrectNetwork && (
+                    <button
+                      className="btn btn-secondary"
+                      onClick={switchNetwork}
+                    >
+                      BSC Testnet
+                    </button>
+                  )}
+                  <button className="btn btn-secondary" onClick={disconnect}>
+                    Disconnect
                   </button>
-                )}
-                <button className="btn btn-secondary" onClick={disconnect}>
-                  Disconnect
-                </button>
-              </div>
-            )}
+                </div>
+              )}
+            </div>
           </div>
+
+          {/* Wallet Error */}
+          {walletError && (
+            <div className="error-message" style={{ marginBottom: '20px' }}>
+              {walletError}
+            </div>
+          )}
 
           {/* Navigation */}
           <Navigation account={account} isOwner={isOwner} />
