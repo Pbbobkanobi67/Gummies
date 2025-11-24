@@ -78,6 +78,13 @@ export function useRaffle(provider, signer, account) {
     }
   }, [contract, fetchRoundInfo]);
 
+  // Force fetch when account connects/changes
+  useEffect(() => {
+    if (contract && account) {
+      fetchRoundInfo();
+    }
+  }, [account, contract, fetchRoundInfo]);
+
   // Buy tickets
   const buyTickets = async (blueAmount) => {
     if (!contract || !signer) {
