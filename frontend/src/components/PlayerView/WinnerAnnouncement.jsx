@@ -1,6 +1,17 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 
 export function WinnerAnnouncement({ winner, onPlayAgain, onViewRound }) {
+  // Auto-dismiss after 15 seconds
+  useEffect(() => {
+    if (winner) {
+      const timer = setTimeout(() => {
+        onPlayAgain(); // Auto-dismiss and close the modal
+      }, 15000); // 15 seconds
+
+      return () => clearTimeout(timer);
+    }
+  }, [winner, onPlayAgain]);
+
   if (!winner) return null;
 
   return (
