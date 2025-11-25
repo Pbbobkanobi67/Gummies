@@ -1,30 +1,37 @@
 import React, { useState, useEffect } from 'react';
 
 export function RaffleCard({ roundInfo, userTickets }) {
-  const [timeLeft, setTimeLeft] = useState('');
+  const [localTimeRemaining, setLocalTimeRemaining] = useState(0);
 
+  // Initialize local time from roundInfo when round changes
+  useEffect(() => {
+    if (roundInfo && roundInfo.timeRemaining !== undefined) {
+      setLocalTimeRemaining(roundInfo.timeRemaining);
+    }
+  }, [roundInfo?.roundId, roundInfo?.timeRemaining]);
+
+  // Local countdown timer
   useEffect(() => {
     if (!roundInfo || roundInfo.statusCode !== 1) {
-      setTimeLeft('');
       return;
     }
 
-    const updateTimer = () => {
-      if (roundInfo.timeRemaining <= 0) {
-        setTimeLeft('Time is up!');
-        return;
-      }
-
-      const minutes = Math.floor(roundInfo.timeRemaining / 60);
-      const seconds = roundInfo.timeRemaining % 60;
-      setTimeLeft(`${minutes}:${seconds.toString().padStart(2, '0')}`);
-    };
-
-    updateTimer();
-    const interval = setInterval(updateTimer, 1000);
+    const interval = setInterval(() => {
+      setLocalTimeRemaining((prev) => {
+        if (prev <= 0) return 0;
+        return prev - 1;
+      });
+    }, 1000); // Count down every 1 second
 
     return () => clearInterval(interval);
-  }, [roundInfo]);
+  }, [roundInfo?.statusCode]);
+
+  const formatTime = (seconds) => {
+    if (seconds <= 0) return 'Time is up!';
+    const minutes = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${minutes}:${secs.toString().padStart(2, '0')}`;
+  };
 
   if (!roundInfo) {
     return (
@@ -54,9 +61,9 @@ export function RaffleCard({ roundInfo, userTickets }) {
         {roundInfo.status}
       </span>
 
-      {roundInfo.statusCode === 1 && timeLeft && (
+      {roundInfo.statusCode === 1 && (
         <div className="timer">
-          <div className="timer-display">{timeLeft}</div>
+          <div className="timer-display">{formatTime(localTimeRemaining)}</div>
           <div className="timer-label">Time Remaining</div>
         </div>
       )}
