@@ -247,14 +247,18 @@ export function RoundHistory({ contract, account }) {
                     rel="noopener noreferrer"
                     style={{
                       color: '#60a5fa',
-                      textDecoration: 'none',
+                      textDecoration: 'underline',
                       fontFamily: 'monospace',
-                      fontSize: '0.8rem'
+                      fontSize: '0.8rem',
+                      cursor: 'pointer',
+                      pointerEvents: 'auto'
                     }}
-                    onMouseOver={(e) => e.target.style.textDecoration = 'underline'}
-                    onMouseOut={(e) => e.target.style.textDecoration = 'none'}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      window.open(`https://testnet.bscscan.com/tx/${round.transactionHash}`, '_blank', 'noopener,noreferrer');
+                    }}
                   >
-                    {round.transactionHash.slice(0, 10)}...{round.transactionHash.slice(-8)}
+                    {round.transactionHash.slice(0, 10)}...{round.transactionHash.slice(-8)} ↗
                   </a>
                 </div>
               )}
