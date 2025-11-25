@@ -77,6 +77,25 @@ export function RoundHistory({ contract, account }) {
               participantCount = 0; // Fallback to 0 if getRoundParticipants fails
             }
 
+            // Try to get transaction hash from WinnerSelected event
+            let transactionHash = null;
+            try {
+              const roundData = await contract.rounds(i);
+              const drawRequestBlock = Number(roundData.drawRequestBlock);
+              if (drawRequestBlock > 0) {
+                const fromBlock = drawRequestBlock;
+                const toBlock = drawRequestBlock + 1000;
+                const filter = contract.filters.WinnerSelected(i);
+                const events = await contract.queryFilter(filter, fromBlock, toBlock);
+                if (events.length > 0) {
+                  transactionHash = events[0].transactionHash;
+                  console.log(`  ✓ Round #${i}: Transaction hash ${transactionHash}`);
+                }
+              }
+            } catch (txErr) {
+              console.warn(`  ⚠️ Round #${i}: Could not fetch transaction hash (${txErr.message})`);
+            }
+
             roundsData.push({
               roundId: i,
               winner: details.winner,
@@ -87,6 +106,7 @@ export function RoundHistory({ contract, account }) {
               randomSeed: details.randomSeed.toString(),
               status: statusName,
               isCancelled: status === 4,
+              transactionHash: transactionHash,
             });
           } else {
             console.log(`  ⊘ Round #${i}: Skipped (status ${status} - ${statusName})`);
@@ -183,55 +203,61 @@ export function RoundHistory({ contract, account }) {
           <div
             key={round.roundId}
             className={`history-item ${round.isUserWinner ? 'history-item-winner' : ''} ${round.isCancelled ? 'history-item-cancelled' : ''}`}
+            style={{ padding: '12px 16px', marginBottom: '10px' }}
           >
-            <div className="history-header">
-              <div className="round-badge">
-                Round #{round.roundId}
-                {round.isCancelled && <span style={{ marginLeft: '8px', fontSize: '0.85em' }}>(Cancelled)</span>}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <span style={{ fontWeight: 'bold', fontSize: '1rem', color: '#60a5fa' }}>
+                  Round #{round.roundId}
+                </span>
+                {round.isCancelled && <span style={{ fontSize: '0.75rem', color: '#f59e0b' }}>(Cancelled)</span>}
+                {round.isUserWinner && <span style={{ fontSize: '0.85rem', color: '#10b981' }}>🏆 You Won!</span>}
               </div>
-              {round.isUserWinner && <div className="winner-badge">🏆 You Won!</div>}
+              <div style={{ fontSize: '0.85rem', fontWeight: 'bold', color: '#10b981' }}>
+                {parseFloat(round.prize).toFixed(2)} BLUE
+              </div>
             </div>
 
-            <div className="history-details">
-              <div className="history-row">
-                <span className="history-label">Winner:</span>
-                <span className="history-value history-address">
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', fontSize: '0.85rem' }}>
+              <div>
+                <span style={{ color: '#94a3b8' }}>Winner: </span>
+                <span style={{ color: '#e2e8f0', fontFamily: 'monospace' }}>
                   {round.winner.slice(0, 6)}...{round.winner.slice(-4)}
                 </span>
               </div>
 
-              <div className="history-row">
-                <span className="history-label">Prize:</span>
-                <span className="history-value history-prize">
-                  {parseFloat(round.prize).toFixed(2)} BLUE
-                </span>
+              <div>
+                <span style={{ color: '#94a3b8' }}>Tickets: </span>
+                <span style={{ color: '#e2e8f0' }}>{parseFloat(round.totalTickets).toFixed(0)}</span>
               </div>
 
-              <div className="history-row">
-                <span className="history-label">Total Tickets:</span>
-                <span className="history-value">{parseFloat(round.totalTickets).toFixed(0)}</span>
-              </div>
-
-              <div className="history-row">
-                <span className="history-label">Participants:</span>
-                <span className="history-value">
+              <div>
+                <span style={{ color: '#94a3b8' }}>Players: </span>
+                <span style={{ color: '#e2e8f0' }}>
                   {round.participants > 0 ? round.participants : 'N/A'}
                 </span>
               </div>
 
-              <div className="history-row">
-                <span className="history-label">Random Seed:</span>
-                <span className="history-value history-seed">
-                  {round.randomSeed.slice(0, 10)}...
-                </span>
-              </div>
-
-              <div className="history-row">
-                <span className="history-label">Status:</span>
-                <span className="history-value">
-                  {round.status}
-                </span>
-              </div>
+              {round.transactionHash && (
+                <div style={{ gridColumn: '1 / -1', marginTop: '4px' }}>
+                  <span style={{ color: '#94a3b8' }}>TX: </span>
+                  <a
+                    href={`https://testnet.bscscan.com/tx/${round.transactionHash}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{
+                      color: '#60a5fa',
+                      textDecoration: 'none',
+                      fontFamily: 'monospace',
+                      fontSize: '0.8rem'
+                    }}
+                    onMouseOver={(e) => e.target.style.textDecoration = 'underline'}
+                    onMouseOut={(e) => e.target.style.textDecoration = 'none'}
+                  >
+                    {round.transactionHash.slice(0, 10)}...{round.transactionHash.slice(-8)}
+                  </a>
+                </div>
+              )}
             </div>
           </div>
         ))}
