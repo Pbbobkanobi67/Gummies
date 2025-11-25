@@ -241,25 +241,17 @@ export function RoundHistory({ contract, account }) {
               {round.transactionHash && (
                 <div style={{ gridColumn: '1 / -1', marginTop: '4px' }}>
                   <span style={{ color: '#94a3b8' }}>TX: </span>
-                  <a
-                    href={`https://testnet.bscscan.com/tx/${round.transactionHash}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
+                  <span
                     style={{
                       color: '#60a5fa',
-                      textDecoration: 'underline',
                       fontFamily: 'monospace',
-                      fontSize: '0.8rem',
-                      cursor: 'pointer',
-                      pointerEvents: 'auto'
-                    }}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      window.open(`https://testnet.bscscan.com/tx/${round.transactionHash}`, '_blank', 'noopener,noreferrer');
+                      fontSize: '0.75rem',
+                      wordBreak: 'break-all',
+                      userSelect: 'all'
                     }}
                   >
-                    {round.transactionHash.slice(0, 10)}...{round.transactionHash.slice(-8)} ↗
-                  </a>
+                    {round.transactionHash}
+                  </span>
                 </div>
               )}
             </div>
