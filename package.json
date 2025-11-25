@@ -1,0 +1,30 @@
+{
+  "name": "blue-dice",
+  "version": "1.0.0",
+  "description": "Blue Protocol Dice Game - Provably fair dice betting with BLUE tokens",
+  "scripts": {
+    "compile": "hardhat compile",
+    "deploy": "hardhat run scripts/deploy.js --network bsc_testnet",
+    "deploy:progressive": "hardhat run scripts/deployProgressive.js --network bsc_testnet",
+    "verify": "hardhat verify --network bsc_testnet",
+    "test": "hardhat test",
+    "clean": "hardhat clean"
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-ethers": "^3.0.5",
+    "@nomicfoundation/hardhat-verify": "^2.0.3",
+    "@openzeppelin/contracts": "^5.0.1",
+    "dotenv": "^16.3.1",
+    "ethers": "^6.10.0",
+    "hardhat": "^2.19.4"
+  },
+  "keywords": [
+    "blockchain",
+    "bnb",
+    "dice",
+    "gambling",
+    "blue-protocol",
+    "chainlink-vrf"
+  ],
+  "license": "MIT"
+}
