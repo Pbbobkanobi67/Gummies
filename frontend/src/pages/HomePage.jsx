@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { RaffleCard } from '../components/PlayerView/RaffleCard';
 import { TicketPurchase } from '../components/PlayerView/TicketPurchase';
 import { WinnerAnnouncement } from '../components/PlayerView/WinnerAnnouncement';
@@ -23,7 +23,6 @@ export function HomePage({
 }) {
   const [previousWinner, setPreviousWinner] = useState(null);
   const [showWinner, setShowWinner] = useState(false);
-  const shownWinnersRef = useRef(new Set());
 
   // Check for previous round winner (only show once per round)
   useEffect(() => {
@@ -31,13 +30,19 @@ export function HomePage({
       if (roundInfo && roundInfo.roundId && parseInt(roundInfo.roundId) > 1) {
         const prevRoundId = parseInt(roundInfo.roundId) - 1;
 
+        // Check localStorage to see if we've shown this winner already
+        const shownWinners = JSON.parse(localStorage.getItem('shownWinners') || '[]');
+
         // Only show if we haven't shown this round's winner yet
-        if (!shownWinnersRef.current.has(prevRoundId)) {
+        if (!shownWinners.includes(prevRoundId)) {
           const winner = await getPreviousRoundWinner();
           if (winner && winner.winner !== '0x0000000000000000000000000000000000000000') {
             setPreviousWinner(winner);
             setShowWinner(true);
-            shownWinnersRef.current.add(prevRoundId);
+
+            // Mark this winner as shown in localStorage
+            shownWinners.push(prevRoundId);
+            localStorage.setItem('shownWinners', JSON.stringify(shownWinners));
           }
         }
       }
