@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { ethers } from 'ethers';
+import { useGameContext } from '../../contexts/GameContext';
 
 export function AdminPanel({ contract, account, signer }) {
   const [isOwner, setIsOwner] = useState(false);
@@ -422,12 +423,230 @@ export function AdminPanel({ contract, account, signer }) {
         </div>
       </div>
 
+      {/* Game Management */}
+      <GameManagementSection />
+
       {/* Refresh Button */}
       <div style={{ textAlign: 'center', marginTop: '30px' }}>
         <button className="btn btn-secondary" onClick={loadAnalytics} disabled={loading}>
           🔄 Refresh Data
         </button>
       </div>
+    </div>
+  );
+}
+
+// Game Management Section Component
+function GameManagementSection() {
+  const { games, devToggleGame, isOwner: isGameOwner } = useGameContext();
+  const [localLoading, setLocalLoading] = useState(null);
+
+  // Handle toggle game property (dev mode - no contract)
+  const handleToggle = async (gameId, field) => {
+    const game = games.find(g => g.id === gameId);
+    if (!game) return;
+
+    setLocalLoading(`${gameId}-${field}`);
+    try {
+      // In dev mode, just toggle locally
+      devToggleGame(gameId, field, !game[field]);
+
+      // TODO: When GameManager contract is deployed, use:
+      // await setGameEnabled(gameId, !game.enabled);
+      // await setGameVisible(gameId, !game.visible);
+      // await setGameFeatured(gameId, !game.featured);
+
+    } catch (err) {
+      console.error('Error toggling game:', err);
+    } finally {
+      setLocalLoading(null);
+    }
+  };
+
+  return (
+    <div className="admin-section">
+      <h3>🎮 Game Management</h3>
+      <p style={{ color: '#94a3b8', fontSize: '0.9rem', marginBottom: '15px' }}>
+        Toggle games on/off, show/hide in navigation, or feature on homepage
+      </p>
+
+      <div className="game-management-grid">
+        {games.map((game) => (
+          <div key={game.id} className="game-card">
+            <div className="game-card-header">
+              <span className="game-icon">
+                {game.id === 'raffle' ? '🎰' : game.id === 'slots' ? '🎲' : '🎮'}
+              </span>
+              <div className="game-info">
+                <h4>{game.name}</h4>
+                <p>{game.description}</p>
+              </div>
+            </div>
+
+            <div className="game-toggles">
+              {/* Enabled Toggle */}
+              <div className="toggle-row">
+                <span className="toggle-label">Enabled</span>
+                <button
+                  className={`toggle-btn ${game.enabled ? 'active' : ''}`}
+                  onClick={() => handleToggle(game.id, 'enabled')}
+                  disabled={localLoading === `${game.id}-enabled`}
+                >
+                  {game.enabled ? 'ON' : 'OFF'}
+                </button>
+              </div>
+
+              {/* Visible Toggle */}
+              <div className="toggle-row">
+                <span className="toggle-label">Visible</span>
+                <button
+                  className={`toggle-btn ${game.visible ? 'active' : ''}`}
+                  onClick={() => handleToggle(game.id, 'visible')}
+                  disabled={localLoading === `${game.id}-visible`}
+                >
+                  {game.visible ? 'ON' : 'OFF'}
+                </button>
+              </div>
+
+              {/* Featured Toggle */}
+              <div className="toggle-row">
+                <span className="toggle-label">Featured</span>
+                <button
+                  className={`toggle-btn ${game.featured ? 'active' : ''}`}
+                  onClick={() => handleToggle(game.id, 'featured')}
+                  disabled={localLoading === `${game.id}-featured`}
+                >
+                  {game.featured ? 'ON' : 'OFF'}
+                </button>
+              </div>
+            </div>
+
+            {/* Status Summary */}
+            <div className="game-status">
+              {game.enabled && game.visible ? (
+                <span className="status-badge live">Live</span>
+              ) : game.visible && !game.enabled ? (
+                <span className="status-badge coming-soon">Coming Soon</span>
+              ) : (
+                <span className="status-badge hidden">Hidden</span>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <style>{`
+        .game-management-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+          gap: 20px;
+          margin-top: 15px;
+        }
+
+        .game-card {
+          background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+          border-radius: 12px;
+          padding: 20px;
+          border: 1px solid #334155;
+        }
+
+        .game-card-header {
+          display: flex;
+          gap: 12px;
+          margin-bottom: 15px;
+          align-items: flex-start;
+        }
+
+        .game-icon {
+          font-size: 2rem;
+        }
+
+        .game-info h4 {
+          margin: 0 0 5px 0;
+          color: #f8fafc;
+        }
+
+        .game-info p {
+          margin: 0;
+          color: #94a3b8;
+          font-size: 0.85rem;
+        }
+
+        .game-toggles {
+          display: flex;
+          flex-direction: column;
+          gap: 10px;
+          margin-bottom: 15px;
+        }
+
+        .toggle-row {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+        }
+
+        .toggle-label {
+          color: #94a3b8;
+          font-size: 0.9rem;
+        }
+
+        .toggle-btn {
+          padding: 6px 16px;
+          border-radius: 6px;
+          font-weight: 600;
+          font-size: 0.85rem;
+          cursor: pointer;
+          transition: all 0.2s ease;
+          border: none;
+          min-width: 60px;
+        }
+
+        .toggle-btn:not(.active) {
+          background: #334155;
+          color: #94a3b8;
+        }
+
+        .toggle-btn.active {
+          background: #22c55e;
+          color: white;
+        }
+
+        .toggle-btn:hover:not(:disabled) {
+          transform: scale(1.05);
+        }
+
+        .toggle-btn:disabled {
+          opacity: 0.5;
+          cursor: not-allowed;
+        }
+
+        .game-status {
+          padding-top: 10px;
+          border-top: 1px solid #334155;
+        }
+
+        .status-badge {
+          padding: 4px 12px;
+          border-radius: 20px;
+          font-size: 0.8rem;
+          font-weight: 600;
+        }
+
+        .status-badge.live {
+          background: rgba(34, 197, 94, 0.2);
+          color: #22c55e;
+        }
+
+        .status-badge.coming-soon {
+          background: rgba(251, 191, 36, 0.2);
+          color: #fbbf24;
+        }
+
+        .status-badge.hidden {
+          background: rgba(148, 163, 184, 0.2);
+          color: #94a3b8;
+        }
+      `}</style>
     </div>
   );
 }
