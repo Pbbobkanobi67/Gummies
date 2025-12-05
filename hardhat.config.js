@@ -1,6 +1,7 @@
 import { config as dotenvConfig } from 'dotenv';
 import '@nomicfoundation/hardhat-ethers';
 import '@nomicfoundation/hardhat-verify';
+import '@nomicfoundation/hardhat-chai-matchers';
 
 dotenvConfig();
 

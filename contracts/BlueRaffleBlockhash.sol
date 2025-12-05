@@ -90,6 +90,8 @@ contract BlueRaffleBlockhash is Ownable, ReentrancyGuard, Pausable {
     error DrawExpired();
     error InvalidDistribution();
     error InvalidAddress();
+    error NoTicketsToWithdraw();
+    error RoundNotWaitingOrActive();
 
     // ============ Constructor ============
 
@@ -172,6 +174,43 @@ contract BlueRaffleBlockhash is Ownable, ReentrancyGuard, Pausable {
         }
 
         emit TicketsPurchased(msg.sender, ticketsAmount, blueAmount, currentRoundId);
+    }
+
+    /**
+     * @notice Withdraw from a round that is stuck in Waiting status
+     * @dev Allows single players to recover their funds without owner intervention
+     * @dev Refunds proportional share from prize pool (94% of original deposit)
+     */
+    function withdrawFromWaiting() external nonReentrant {
+        Round storage round = rounds[currentRoundId];
+
+        // Can only withdraw if round is in Waiting status (not yet activated)
+        if (round.status != RoundStatus.Waiting) revert RoundNotWaiting();
+
+        uint256 tickets = userTickets[currentRoundId][msg.sender];
+        if (tickets == 0) revert NoTicketsToWithdraw();
+
+        // Calculate proportional refund from prize pool
+        // (user's tickets / total tickets) * prize pool
+        uint256 refundAmount = (tickets * round.prizePool) / round.totalTickets;
+
+        // Clear user's tickets
+        userTickets[currentRoundId][msg.sender] = 0;
+        round.totalTickets -= tickets;
+        round.prizePool -= refundAmount;
+        round.uniqueWallets--;
+
+        // Transfer refund
+        if (refundAmount > 0) {
+            blueToken.transfer(msg.sender, refundAmount);
+            emit RoundRefunded(currentRoundId, msg.sender, refundAmount);
+        }
+
+        // If no participants left, start a new round
+        if (round.uniqueWallets == 0) {
+            round.status = RoundStatus.Cancelled;
+            _startNewRound();
+        }
     }
 
     /**
@@ -332,20 +371,25 @@ contract BlueRaffleBlockhash is Ownable, ReentrancyGuard, Pausable {
 
     /**
      * @notice Cancel current round and refund all participants (emergency)
+     * @dev Refunds proportional share of prize pool to each participant
+     * @dev Note: Refund is ~94% of original deposit since 6% was already distributed
      */
     function cancelRound() external onlyOwner {
         Round storage round = rounds[currentRoundId];
         require(round.status != RoundStatus.Complete, "Round already complete");
 
         address[] memory participants = roundParticipants[currentRoundId];
+        uint256 totalTicketsSnapshot = round.totalTickets;
+        uint256 prizePoolSnapshot = round.prizePool;
 
         for (uint256 i = 0; i < participants.length; i++) {
             address participant = participants[i];
             uint256 tickets = userTickets[currentRoundId][participant];
 
-            if (tickets > 0) {
-                // Calculate refund (tickets / multiplier = original BLUE amount)
-                uint256 refundAmount = tickets / ticketMultiplier;
+            if (tickets > 0 && totalTicketsSnapshot > 0) {
+                // Calculate proportional refund from prize pool
+                // (user's tickets / total tickets) * prize pool
+                uint256 refundAmount = (tickets * prizePoolSnapshot) / totalTicketsSnapshot;
 
                 // Refund from prize pool
                 if (refundAmount > 0 && refundAmount <= blueToken.balanceOf(address(this))) {
@@ -525,6 +569,7 @@ contract BlueRaffleBlockhash is Ownable, ReentrancyGuard, Pausable {
 
     /**
      * @notice Refund single player and start new round
+     * @dev Refunds the entire prize pool to the single player (94% of deposit)
      */
     function _refundSinglePlayer(uint256 roundId) internal {
         Round storage round = rounds[roundId];
@@ -532,17 +577,12 @@ contract BlueRaffleBlockhash is Ownable, ReentrancyGuard, Pausable {
 
         if (participants.length == 1) {
             address player = participants[0];
-            uint256 tickets = userTickets[roundId][player];
+            uint256 refundAmount = round.prizePool; // Refund entire prize pool
 
-            if (tickets > 0) {
-                // Calculate original BLUE amount
-                uint256 refundAmount = tickets / ticketMultiplier;
-
-                // Refund from contract balance
-                if (refundAmount > 0) {
-                    blueToken.transfer(player, refundAmount);
-                    emit RoundRefunded(roundId, player, refundAmount);
-                }
+            // Refund from contract balance
+            if (refundAmount > 0) {
+                blueToken.transfer(player, refundAmount);
+                emit RoundRefunded(roundId, player, refundAmount);
             }
         }
 
