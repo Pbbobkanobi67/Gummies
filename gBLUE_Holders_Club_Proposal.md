@@ -8,6 +8,22 @@
 
 ---
 
+## The Core Idea
+
+Instead of just using BLUE tokens to buy raffle tickets, **gBLUE holders get rewarded simply for holding**. The more gBLUE you hold across any chain, the more free tickets and bonuses you get.
+
+```
+Hold gBLUE → Get assigned a Tier → Receive weekly benefits
+```
+
+**Every week:**
+1. We snapshot gBLUE balances on BSC, Abstract, and Arborean DEX
+2. Add up each wallet's total across all chains
+3. Assign tier based on total holdings
+4. Users claim free tickets + get multiplier on purchases
+
+---
+
 ## Executive Summary
 
 This proposal outlines a comprehensive rewards system that incentivizes gBLUE token holders with BlueRaffle casino tickets. With gBLUE now available cross-chain on Abstract blockchain and Arborean DEX, we have a unique opportunity to create a unified ecosystem that rewards holders across all chains.
@@ -42,6 +58,20 @@ The gBLUE Holders Club features four tiers based on total gBLUE holdings across 
 | 🥇 **GOLD** | 2,000+ gBLUE | 30 tickets | 1.5x |
 | 🥈 **SILVER** | 500+ gBLUE | 10 tickets | 1.25x |
 | 🥉 **BRONZE** | 100+ gBLUE | 2 tickets | 1.1x |
+
+### Real Example: Diamond Holder
+
+```
+Diamond Holder (12,000 gBLUE):
+
+Weekly free tickets:           100 tickets
+Buys 50 BLUE of tickets:       100 tickets (50 × 2x multiplier)
+                               ───────────
+Total entries this week:       200 tickets
+
+Without Diamond status, 50 BLUE = only 50 tickets
+Diamond gets 4x more entries for same spend!
+```
 
 ### How Tiers Work
 
@@ -98,6 +128,25 @@ Gold Tier (2,000 gBLUE)     = 30 tickets/week
 ─────────────────────────────────────────────
 Total Weekly Tickets        = 60 tickets/week
 ```
+
+---
+
+## Cross-Chain Magic
+
+Your gBLUE counts **everywhere** - you don't need to move tokens around. Hold wherever you want:
+
+```
+BSC wallet:        500 gBLUE
+Abstract wallet:   300 gBLUE
+Arborean LP:       200 gBLUE (in liquidity pool)
+                   ─────────
+Total:           1,000 gBLUE → 🥇 GOLD TIER
+```
+
+This is powerful because:
+- No bridging required to qualify for tiers
+- LP positions count toward your total
+- Flexibility to use gBLUE wherever makes sense for you
 
 ---
 
@@ -180,6 +229,55 @@ The existing BlueRaffle contract will be updated to:
 - Query GBlueHoldersClub for user multiplier before ticket purchase
 - Apply multiplier to tickets received (e.g., 10 BLUE × 1.5x = 15 tickets)
 - Emit events for tracking multiplied purchases
+
+---
+
+## Why This Is Powerful
+
+### For Holders
+
+| Benefit | Description |
+|---------|-------------|
+| 🎁 **Passive Income** | Tickets = chance to win prizes, just for holding |
+| 🔓 **No Lock Required** | No staking or locking - your gBLUE stays liquid |
+| 🔄 **Compounding Rewards** | Win → buy more gBLUE → higher tier → more wins |
+| 🌐 **Chain Flexibility** | Hold on any supported chain, it all counts |
+
+### For Blue Protocol
+
+| Benefit | Description |
+|---------|-------------|
+| 📉 **Reduced Sell Pressure** | Why sell when holding = rewards? |
+| 💧 **Deeper Liquidity** | LP incentives drive Arborean DEX growth |
+| 👥 **Sticky Community** | Engaged holders become long-term supporters |
+| 📈 **Sustainable Tokenomics** | Utility creates organic demand |
+
+### For the Raffle
+
+| Benefit | Description |
+|---------|-------------|
+| 🎰 **More Participants** | Bigger prize pools from increased entries |
+| 🔥 **More Engagement** | Free tickets bring people back weekly |
+| 📢 **Viral Growth** | Winners tell friends, network effects kick in |
+
+---
+
+## The Weekly Cycle
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  MONDAY     │  Snapshot taken across all chains             │
+├─────────────┼───────────────────────────────────────────────┤
+│  TUESDAY    │  Merkle root published on-chain               │
+├─────────────┼───────────────────────────────────────────────┤
+│  ALL WEEK   │  Users claim free tickets                     │
+│             │  Multiplier active on all purchases           │
+├─────────────┼───────────────────────────────────────────────┤
+│  SUNDAY     │  Cycle resets, prepare for next snapshot      │
+└─────────────┴───────────────────────────────────────────────┘
+```
+
+**Claim anytime during the week** - no rush, no gas wars. Your tickets are reserved once the snapshot is taken.
 
 ---
 
