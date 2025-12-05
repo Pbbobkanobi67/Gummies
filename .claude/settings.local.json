@@ -1,0 +1,24 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install:*)",
+      "Bash(npx hardhat:*)",
+      "Bash(npm run dev:*)",
+      "Bash(copy \"C:\\Users\\bob\\blue-dice\\.env.example\" \"C:\\Users\\bob\\blue-dice\\.env\")",
+      "Bash(git add:*)",
+      "Bash(git commit -m \"$(cat <<''EOF''\nBlue Dice DApp - Initial release with Blue Raffle unified styling\n\nFeatures:\n- Classic Dice: 5 bet types (Exact, Over, Under, Odd, Even) with blockhash randomness\n- Progressive Dice: 4-dice jackpot game with tiered payouts (80%/1%/refund)\n- React + Vite frontend with ethers.js v6\n- Solidity 0.8.20 contracts using OpenZeppelin 5.x\n- UI styling matches Blue Raffle for Blue Casino uniformity\n\nContracts:\n- BlueDice.sol: Classic dice with 3% house edge\n- BlueDiceProgressive.sol: Progressive jackpot with commit-reveal pattern\n\n🎲 Blue Casino checkpoint - styling unified with Blue Raffle\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")",
+      "Bash(npm run deploy:progressive:*)",
+      "Bash(npm run compile:*)",
+      "Bash(npm run deploy:raffle:*)",
+      "Bash(vercel:*)",
+      "Bash(npm run build:*)",
+      "Bash(timeout 2 head:*)",
+      "Bash(curl:*)",
+      "Bash(dir C:Usersbob /AD /B)",
+      "Bash(findstr:*)",
+      "Bash(cat:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
