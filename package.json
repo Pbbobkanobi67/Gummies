@@ -1,30 +1,33 @@
 {
-  "name": "blue-dice",
-  "version": "1.0.0",
-  "description": "Blue Protocol Dice Game - Provably fair dice betting with BLUE tokens",
+  "name": "blue-raffle-blockhash",
+  "version": "2.0.0",
+  "description": "Modular blockchain raffle using blockhash randomness",
+  "type": "module",
   "scripts": {
     "compile": "hardhat compile",
-    "deploy": "hardhat run scripts/deploy.js --network bsc_testnet",
-    "deploy:progressive": "hardhat run scripts/deployProgressive.js --network bsc_testnet",
-    "verify": "hardhat verify --network bsc_testnet",
+    "deploy": "hardhat run scripts/deploy.cjs --network bsc_testnet",
+    "deploy:local": "hardhat run scripts/deploy.cjs --network hardhat",
     "test": "hardhat test",
+    "node": "hardhat node",
     "clean": "hardhat clean"
   },
+  "keywords": [
+    "raffle",
+    "blockchain",
+    "hardhat",
+    "solidity",
+    "bsc"
+  ],
   "devDependencies": {
+    "@nomicfoundation/hardhat-chai-matchers": "^2.0.8",
     "@nomicfoundation/hardhat-ethers": "^3.0.5",
+    "@nomicfoundation/hardhat-network-helpers": "^1.0.12",
     "@nomicfoundation/hardhat-verify": "^2.0.3",
     "@openzeppelin/contracts": "^5.0.1",
+    "chai": "^4.5.0",
     "dotenv": "^16.3.1",
     "ethers": "^6.10.0",
-    "hardhat": "^2.19.4"
-  },
-  "keywords": [
-    "blockchain",
-    "bnb",
-    "dice",
-    "gambling",
-    "blue-protocol",
-    "chainlink-vrf"
-  ],
-  "license": "MIT"
+    "hardhat": "^2.19.4",
+    "pdfkit": "^0.17.2"
+  }
 }

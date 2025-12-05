@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { ethers } from 'ethers';
-import contractConfig from '../config/raffleContract.json';
-import contractABI from '../config/raffleAbi.json';
+import contractConfig from '../config/contract.json';
+import contractABI from '../config/abi.json';
 
 const ROUND_STATUS = {
   0: 'Waiting',
@@ -11,7 +11,7 @@ const ROUND_STATUS = {
   4: 'Cancelled',
 };
 
-export function useRaffle(signer, account) {
+export function useRaffle(provider, signer, account) {
   const [contract, setContract] = useState(null);
   const [roundInfo, setRoundInfo] = useState(null);
   const [userTickets, setUserTickets] = useState('0');
@@ -20,21 +20,33 @@ export function useRaffle(signer, account) {
 
   // Initialize contract
   useEffect(() => {
-    if (signer && contractConfig.address !== '0x0000000000000000000000000000000000000000') {
+    if (signer && contractABI.length > 0) {
+      console.log('🔧 Creating contract with signer');
       const raffleContract = new ethers.Contract(
         contractConfig.address,
         contractABI,
         signer
       );
       setContract(raffleContract);
-    } else {
-      setContract(null);
+    } else if (provider && contractABI.length > 0) {
+      console.log('🔧 Creating contract with provider');
+      const raffleContract = new ethers.Contract(
+        contractConfig.address,
+        contractABI,
+        provider
+      );
+      setContract(raffleContract);
     }
-  }, [signer]);
+  }, [provider, signer]);
 
   // Fetch round info
   const fetchRoundInfo = useCallback(async () => {
-    if (!contract) return;
+    if (!contract) {
+      console.log('⏭️ Skipping fetch - no contract');
+      return;
+    }
+
+    console.log('📡 Fetching round info...', { hasAccount: !!account });
 
     try {
       const info = await contract.getCurrentRoundInfo();
@@ -51,29 +63,33 @@ export function useRaffle(signer, account) {
         timeRemaining: Number(info.timeRemaining),
       };
 
+      console.log('✅ Round info fetched:', roundData.roundId, roundData.status);
       setRoundInfo(roundData);
 
       // Fetch user tickets if connected
       if (account && info.roundId) {
         const tickets = await contract.getUserTickets(info.roundId, account);
         setUserTickets(ethers.formatEther(tickets));
+        console.log('🎟️ User tickets:', ethers.formatEther(tickets));
       }
     } catch (err) {
-      console.error('Error fetching round info:', err);
+      console.error('❌ Error fetching round info:', err);
+      setError(err.message);
     }
   }, [contract, account]);
 
   // Auto-refresh round info
   useEffect(() => {
     if (contract) {
+      // Immediate fetch when contract is ready
       fetchRoundInfo();
-      const interval = setInterval(fetchRoundInfo, 5000);
+      const interval = setInterval(fetchRoundInfo, 5000); // Refresh every 5 seconds
       return () => clearInterval(interval);
     }
-  }, [contract, account, fetchRoundInfo]);
+  }, [contract, account, fetchRoundInfo]); // Add account to trigger re-fetch when wallet connects
 
   // Buy tickets
-  const buyTickets = useCallback(async (blueAmount) => {
+  const buyTickets = async (blueAmount) => {
     if (!contract || !signer) {
       setError('Wallet not connected');
       return false;
@@ -85,43 +101,36 @@ export function useRaffle(signer, account) {
 
       const amount = ethers.parseEther(blueAmount.toString());
 
-      // Approve BLUE token (use max approval to avoid repeated approvals)
+      // First, approve BLUE token
       const blueTokenAddress = await contract.blueToken();
       const blueToken = new ethers.Contract(
         blueTokenAddress,
-        [
-          'function approve(address spender, uint256 amount) returns (bool)',
-          'function allowance(address owner, address spender) view returns (uint256)'
-        ],
+        ['function approve(address spender, uint256 amount) returns (bool)'],
         signer
       );
 
-      const signerAddress = await signer.getAddress();
-      const allowance = await blueToken.allowance(signerAddress, contractConfig.address);
+      console.log('Approving BLUE tokens...');
+      const approveTx = await blueToken.approve(contractConfig.address, amount);
+      await approveTx.wait();
 
-      if (allowance < amount) {
-        // Approve max uint256 so user only needs to approve once
-        const approveTx = await blueToken.approve(contractConfig.address, ethers.MaxUint256);
-        await approveTx.wait();
-      }
-
-      // Buy tickets
+      console.log('Buying tickets...');
       const buyTx = await contract.buyTickets(amount);
       await buyTx.wait();
 
+      console.log('Tickets purchased successfully!');
       await fetchRoundInfo();
       return true;
     } catch (err) {
       console.error('Error buying tickets:', err);
-      setError(err.reason || err.message || 'Failed to buy tickets');
+      setError(err.message);
       return false;
     } finally {
       setLoading(false);
     }
-  }, [contract, signer, fetchRoundInfo]);
+  };
 
   // Request draw
-  const requestDraw = useCallback(async () => {
+  const requestDraw = async () => {
     if (!contract || !signer) {
       setError('Wallet not connected');
       return false;
@@ -131,22 +140,24 @@ export function useRaffle(signer, account) {
       setLoading(true);
       setError(null);
 
+      console.log('Requesting draw...');
       const tx = await contract.requestDraw();
       await tx.wait();
 
+      console.log('Draw requested successfully!');
       await fetchRoundInfo();
       return true;
     } catch (err) {
       console.error('Error requesting draw:', err);
-      setError(err.reason || err.message || 'Failed to request draw');
+      setError(err.message);
       return false;
     } finally {
       setLoading(false);
     }
-  }, [contract, signer, fetchRoundInfo]);
+  };
 
   // Execute draw
-  const executeDraw = useCallback(async () => {
+  const executeDraw = async () => {
     if (!contract || !signer) {
       setError('Wallet not connected');
       return false;
@@ -156,19 +167,21 @@ export function useRaffle(signer, account) {
       setLoading(true);
       setError(null);
 
+      console.log('Executing draw...');
       const tx = await contract.executeDraw();
       await tx.wait();
 
+      console.log('Winner selected!');
       await fetchRoundInfo();
       return true;
     } catch (err) {
       console.error('Error executing draw:', err);
-      setError(err.reason || err.message || 'Failed to execute draw');
+      setError(err.message);
       return false;
     } finally {
       setLoading(false);
     }
-  }, [contract, signer, fetchRoundInfo]);
+  };
 
   // Check if can request draw
   const canRequestDraw = useCallback(async () => {
@@ -176,7 +189,10 @@ export function useRaffle(signer, account) {
 
     try {
       const result = await contract.canRequestDraw();
-      return { canRequest: result[0], reason: result[1] };
+      return {
+        canRequest: result[0],
+        reason: result[1],
+      };
     } catch (err) {
       return { canRequest: false, reason: err.message };
     }
@@ -188,7 +204,10 @@ export function useRaffle(signer, account) {
 
     try {
       const result = await contract.canExecuteDraw();
-      return { canExecute: result[0], reason: result[1] };
+      return {
+        canExecute: result[0],
+        reason: result[1],
+      };
     } catch (err) {
       return { canExecute: false, reason: err.message };
     }
@@ -214,55 +233,6 @@ export function useRaffle(signer, account) {
     }
   }, [contract, roundInfo]);
 
-  // Admin: Cancel round
-  const cancelRound = useCallback(async () => {
-    if (!contract || !signer) {
-      setError('Wallet not connected');
-      return false;
-    }
-
-    try {
-      setLoading(true);
-      setError(null);
-
-      const tx = await contract.cancelRound();
-      await tx.wait();
-
-      await fetchRoundInfo();
-      return true;
-    } catch (err) {
-      console.error('Error cancelling round:', err);
-      setError(err.reason || err.message || 'Failed to cancel round');
-      return false;
-    } finally {
-      setLoading(false);
-    }
-  }, [contract, signer, fetchRoundInfo]);
-
-  // Admin: Set bonus multiplier
-  const setBonusMultiplier = useCallback(async (multiplier) => {
-    if (!contract || !signer) {
-      setError('Wallet not connected');
-      return false;
-    }
-
-    try {
-      setLoading(true);
-      setError(null);
-
-      const tx = await contract.setBonusMultiplier(multiplier);
-      await tx.wait();
-
-      return true;
-    } catch (err) {
-      console.error('Error setting bonus multiplier:', err);
-      setError(err.reason || err.message || 'Failed to set bonus multiplier');
-      return false;
-    } finally {
-      setLoading(false);
-    }
-  }, [contract, signer]);
-
   return {
     contract,
     roundInfo,
@@ -275,9 +245,6 @@ export function useRaffle(signer, account) {
     canRequestDraw,
     canExecuteDraw,
     getPreviousRoundWinner,
-    cancelRound,
-    setBonusMultiplier,
     refreshRoundInfo: fetchRoundInfo,
-    clearError: () => setError(null),
   };
 }

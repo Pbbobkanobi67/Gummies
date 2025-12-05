@@ -1,34 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { ethers } from 'ethers';
-import { useGameContext } from '../contexts/GameContext';
 
-const BLUE_TOKEN = "0xf11Af396703E11D48780B5154E52Fd7b430C6C01";
-const BLUE_SLOTS_ADDRESS = import.meta.env.VITE_BLUE_SLOTS_ADDRESS || "0x5d5d7c1d9546C59f023f9DA40c96Ac5a2bC5Ffbe";
-
-// BlueSlots ABI
-const BLUE_SLOTS_ABI = [
-  "function spin(uint256 betAmount) external returns (uint256 spinId)",
-  "function reveal(uint256 spinId) external returns (uint256 winAmount)",
-  "function canReveal(uint256 spinId) external view returns (bool canRevealNow, string memory reason)",
-  "function blocksUntilReveal(uint256 spinId) external view returns (uint256 blocks)",
-  "function getPendingSpin(address player) external view returns (uint256)",
-  "function getSpinResult(uint256 spinId) external view returns (tuple(address player, uint256 betAmount, uint256 spinBlock, uint256 winAmount, uint8[3] symbols, uint8 status, bool isFreeSpin))",
-  "function getPlayerStats(address player) external view returns (tuple(uint256 totalSpins, uint256 totalWagered, uint256 totalWon, uint256 biggestWin, uint256 freeSpinsUsed))",
-  "function minBet() view returns (uint256)",
-  "function maxBet() view returns (uint256)",
-  "function houseReserve() view returns (uint256)",
-  "function getMaxBetForReserve() view returns (uint256)",
-  "event SpinStarted(uint256 indexed spinId, address indexed player, uint256 betAmount, bool isFreeSpin)",
-  "event SpinRevealed(uint256 indexed spinId, address indexed player, uint8[3] symbols, uint8[3] symbolTypes, uint256 winAmount)"
-];
-
-const ERC20_ABI = [
-  "function approve(address spender, uint256 amount) returns (bool)",
-  "function allowance(address owner, address spender) view returns (uint256)",
-  "function balanceOf(address account) view returns (uint256)"
-];
-
-// Symbol definitions - order matches contract enum
+// Symbol definitions
 const SYMBOLS = {
   0: { name: 'BLUE', emoji: '🔵', color: '#3B82F6' },
   1: { name: 'DIAMOND', emoji: '💎', color: '#A855F7' },
@@ -36,16 +9,6 @@ const SYMBOLS = {
   3: { name: 'STAR', emoji: '⭐', color: '#FBBF24' },
   4: { name: 'LUCKY', emoji: '🍀', color: '#22C55E' },
   5: { name: 'SEVEN', emoji: '🎰', color: '#EC4899' }
-};
-
-// Position to symbol mapping (matches contract)
-const positionToSymbol = (position) => {
-  if (position < 2) return 0;   // BLUE
-  if (position < 5) return 1;   // DIAMOND
-  if (position < 9) return 2;   // FIRE
-  if (position < 14) return 3;  // STAR
-  if (position < 17) return 4;  // LUCKY
-  return 5;                      // SEVEN
 };
 
 // Payout multipliers (for display)
@@ -62,141 +25,42 @@ const PAYOUTS = {
 // Bet presets
 const BET_PRESETS = [5, 10, 25, 50, 100];
 
-function SlotsPage({ wallet }) {
-  // Get game status from context
-  let slotsGame = null;
-  let isGameEnabled = false;
-  try {
-    const gameContext = useGameContext();
-    slotsGame = gameContext.getGame('slots');
-    isGameEnabled = gameContext.isGamePlayable('slots');
-  } catch (e) {
-    // Context not available
-  }
-
+export function SlotsPage({ contract, signer, isConnected, isCorrectNetwork }) {
   // State
-  const [betAmount, setBetAmount] = useState(10);
+  const [betAmount, setBetAmount] = useState(25);
   const [customBet, setCustomBet] = useState('');
   const [balance, setBalance] = useState('0');
   const [reels, setReels] = useState([3, 3, 3]); // Default to stars
   const [isSpinning, setIsSpinning] = useState(false);
-  const [isRevealing, setIsRevealing] = useState(false);
-  const [pendingSpinId, setPendingSpinId] = useState(null);
-  const [blocksToWait, setBlocksToWait] = useState(0);
+  const [pendingReveal, setPendingReveal] = useState(null);
   const [lastWin, setLastWin] = useState(null);
   const [error, setError] = useState(null);
-  const [txStatus, setTxStatus] = useState('');
   const [stats, setStats] = useState({
     totalSpins: 0,
     totalWagered: '0',
     totalWon: '0',
     biggestWin: '0'
   });
-  const [contractInfo, setContractInfo] = useState({
-    minBet: 5,
-    maxBet: 100,
-    houseReserve: '0',
-    maxBetForReserve: 100
-  });
 
   // Animation state
   const [animatingReels, setAnimatingReels] = useState([false, false, false]);
 
-  // Contract ready check
-  const isContractReady = !!BLUE_SLOTS_ADDRESS;
+  // Placeholder for when contract not deployed
+  const isContractReady = false; // Set to true when BlueSlots is deployed
 
-  // Fetch BLUE balance
+  // Fetch balance (placeholder)
   useEffect(() => {
-    const fetchBalance = async () => {
-      if (!wallet?.account || !wallet?.signer) {
-        setBalance('0');
-        return;
-      }
-
-      try {
-        const blueToken = new ethers.Contract(BLUE_TOKEN, ERC20_ABI, wallet.signer);
-        const bal = await blueToken.balanceOf(wallet.account);
-        setBalance(parseFloat(ethers.formatEther(bal)).toLocaleString());
-      } catch (err) {
-        console.error('Error fetching balance:', err);
-      }
-    };
-
-    fetchBalance();
-    const interval = setInterval(fetchBalance, 10000);
-    return () => clearInterval(interval);
-  }, [wallet?.account, wallet?.signer]);
-
-  // Fetch contract info and player stats
-  useEffect(() => {
-    const fetchContractInfo = async () => {
-      if (!wallet?.signer || !isContractReady) return;
-
-      try {
-        const slotsContract = new ethers.Contract(BLUE_SLOTS_ADDRESS, BLUE_SLOTS_ABI, wallet.signer);
-
-        const [minBet, maxBet, reserve, maxBetReserve] = await Promise.all([
-          slotsContract.minBet(),
-          slotsContract.maxBet(),
-          slotsContract.houseReserve(),
-          slotsContract.getMaxBetForReserve()
-        ]);
-
-        setContractInfo({
-          minBet: parseFloat(ethers.formatEther(minBet)),
-          maxBet: parseFloat(ethers.formatEther(maxBet)),
-          houseReserve: ethers.formatEther(reserve),
-          maxBetForReserve: parseFloat(ethers.formatEther(maxBetReserve))
-        });
-
-        // Fetch player stats
-        if (wallet.account) {
-          const playerStats = await slotsContract.getPlayerStats(wallet.account);
-          setStats({
-            totalSpins: Number(playerStats.totalSpins),
-            totalWagered: ethers.formatEther(playerStats.totalWagered),
-            totalWon: ethers.formatEther(playerStats.totalWon),
-            biggestWin: ethers.formatEther(playerStats.biggestWin)
-          });
-
-          // Check for pending spin
-          const pending = await slotsContract.getPendingSpin(wallet.account);
-          if (pending > 0n) {
-            setPendingSpinId(Number(pending));
-          }
-        }
-      } catch (err) {
-        console.error('Error fetching contract info:', err);
-      }
-    };
-
-    fetchContractInfo();
-  }, [wallet?.signer, wallet?.account, isContractReady]);
-
-  // Check blocks to wait for pending spin
-  useEffect(() => {
-    if (!pendingSpinId || !wallet?.signer || !isContractReady) return;
-
-    const checkBlocks = async () => {
-      try {
-        const slotsContract = new ethers.Contract(BLUE_SLOTS_ADDRESS, BLUE_SLOTS_ABI, wallet.signer);
-        const blocks = await slotsContract.blocksUntilReveal(pendingSpinId);
-        setBlocksToWait(Number(blocks));
-      } catch (err) {
-        console.error('Error checking blocks:', err);
-      }
-    };
-
-    checkBlocks();
-    const interval = setInterval(checkBlocks, 3000);
-    return () => clearInterval(interval);
-  }, [pendingSpinId, wallet?.signer, isContractReady]);
+    // TODO: Fetch BLUE balance when contract is ready
+    setBalance('1,000');
+  }, [signer]);
 
   // Spin animation
   const animateSpin = useCallback(() => {
     return new Promise((resolve) => {
+      // Start all reels spinning
       setAnimatingReels([true, true, true]);
 
+      // Random symbols during animation
       const interval = setInterval(() => {
         setReels([
           Math.floor(Math.random() * 6),
@@ -205,8 +69,15 @@ function SlotsPage({ wallet }) {
         ]);
       }, 100);
 
-      setTimeout(() => setAnimatingReels([false, true, true]), 1000);
-      setTimeout(() => setAnimatingReels([false, false, true]), 1500);
+      // Stop reels one by one
+      setTimeout(() => {
+        setAnimatingReels([false, true, true]);
+      }, 1000);
+
+      setTimeout(() => {
+        setAnimatingReels([false, false, true]);
+      }, 1500);
+
       setTimeout(() => {
         clearInterval(interval);
         setAnimatingReels([false, false, false]);
@@ -215,144 +86,66 @@ function SlotsPage({ wallet }) {
     });
   }, []);
 
-  // Handle spin
+  // Handle spin (demo mode)
   const handleSpin = async () => {
-    if (!wallet?.account || !wallet?.signer) {
-      setError('Please connect your wallet');
+    if (!isContractReady) {
+      // Demo mode - random result
+      setError(null);
+      setLastWin(null);
+      setIsSpinning(true);
+
+      await animateSpin();
+
+      // Generate random result
+      const finalReels = [
+        Math.floor(Math.random() * 6),
+        Math.floor(Math.random() * 6),
+        Math.floor(Math.random() * 6)
+      ];
+      setReels(finalReels);
+
+      // Check for win
+      const win = checkWin(finalReels);
+      if (win > 0) {
+        setLastWin(win);
+      }
+
+      setIsSpinning(false);
       return;
     }
 
-    if (pendingSpinId) {
-      setError('You have a pending spin. Please reveal it first.');
-      return;
-    }
-
-    setError(null);
-    setLastWin(null);
-    setIsSpinning(true);
-    setTxStatus('Approving BLUE tokens...');
-
+    // Real contract interaction (when ready)
     try {
-      const slotsContract = new ethers.Contract(BLUE_SLOTS_ADDRESS, BLUE_SLOTS_ABI, wallet.signer);
-      const blueToken = new ethers.Contract(BLUE_TOKEN, ERC20_ABI, wallet.signer);
-      const betWei = ethers.parseEther(betAmount.toString());
+      setError(null);
+      setLastWin(null);
+      setIsSpinning(true);
 
-      // Check and approve if needed
-      const allowance = await blueToken.allowance(wallet.account, BLUE_SLOTS_ADDRESS);
-      if (allowance < betWei) {
-        setTxStatus('Approving BLUE tokens...');
-        const approveTx = await blueToken.approve(BLUE_SLOTS_ADDRESS, ethers.MaxUint256);
-        await approveTx.wait();
-      }
+      // TODO: Call contract.spin(betAmount)
 
-      // Start spin
-      setTxStatus('Starting spin...');
-      const spinTx = await slotsContract.spin(betWei);
-      const receipt = await spinTx.wait();
-
-      // Get spin ID from event
-      const spinEvent = receipt.logs.find(log => {
-        try {
-          const parsed = slotsContract.interface.parseLog(log);
-          return parsed.name === 'SpinStarted';
-        } catch { return false; }
-      });
-
-      if (spinEvent) {
-        const parsed = slotsContract.interface.parseLog(spinEvent);
-        const spinId = Number(parsed.args.spinId);
-        setPendingSpinId(spinId);
-        setTxStatus(`Spin started! Waiting for blocks... (Spin #${spinId})`);
-
-        // Start animation
-        animateSpin();
-      }
     } catch (err) {
       console.error('Spin error:', err);
-      setError(err.reason || err.message || 'Failed to spin');
-    } finally {
+      setError(err.message);
       setIsSpinning(false);
-      setTxStatus('');
     }
   };
 
-  // Handle reveal
-  const handleReveal = async () => {
-    if (!pendingSpinId || !wallet?.signer) return;
-
-    setError(null);
-    setIsRevealing(true);
-    setTxStatus('Revealing result...');
-
-    try {
-      const slotsContract = new ethers.Contract(BLUE_SLOTS_ADDRESS, BLUE_SLOTS_ABI, wallet.signer);
-
-      // Check if we can reveal
-      const [canRevealNow, reason] = await slotsContract.canReveal(pendingSpinId);
-      if (!canRevealNow) {
-        setError(reason);
-        setIsRevealing(false);
-        setTxStatus('');
-        return;
-      }
-
-      // Reveal
-      const revealTx = await slotsContract.reveal(pendingSpinId);
-      const receipt = await revealTx.wait();
-
-      // Get result from event
-      const revealEvent = receipt.logs.find(log => {
-        try {
-          const parsed = slotsContract.interface.parseLog(log);
-          return parsed.name === 'SpinRevealed';
-        } catch { return false; }
-      });
-
-      if (revealEvent) {
-        const parsed = slotsContract.interface.parseLog(revealEvent);
-        const symbols = parsed.args.symbols;
-        const winAmount = parsed.args.winAmount;
-
-        // Convert positions to symbol types
-        const finalReels = [
-          positionToSymbol(symbols[0]),
-          positionToSymbol(symbols[1]),
-          positionToSymbol(symbols[2])
-        ];
-        setReels(finalReels);
-
-        // Set win amount
-        const winBLUE = parseFloat(ethers.formatEther(winAmount));
-        if (winBLUE > 0) {
-          setLastWin(winBLUE);
-        }
-
-        // Refresh stats
-        const playerStats = await slotsContract.getPlayerStats(wallet.account);
-        setStats({
-          totalSpins: Number(playerStats.totalSpins),
-          totalWagered: ethers.formatEther(playerStats.totalWagered),
-          totalWon: ethers.formatEther(playerStats.totalWon),
-          biggestWin: ethers.formatEther(playerStats.biggestWin)
-        });
-      }
-
-      setPendingSpinId(null);
-      setBlocksToWait(0);
-    } catch (err) {
-      console.error('Reveal error:', err);
-      setError(err.reason || err.message || 'Failed to reveal');
-    } finally {
-      setIsRevealing(false);
-      setTxStatus('');
+  // Check win (demo)
+  const checkWin = (symbols) => {
+    if (symbols[0] === symbols[1] && symbols[1] === symbols[2]) {
+      // Triple match
+      const multipliers = [50, 25, 10, 5, 8, 15];
+      return betAmount * multipliers[symbols[0]];
     }
+    if (symbols[0] === symbols[1] || symbols[1] === symbols[2]) {
+      // Two match
+      return betAmount * 1.5;
+    }
+    return 0;
   };
 
+  // Get result message
   const getResultMessage = () => {
-    if (isSpinning) return 'Starting spin...';
-    if (pendingSpinId && blocksToWait > 0) return `Waiting for ${blocksToWait} more block(s)...`;
-    if (pendingSpinId && blocksToWait === 0) return 'Ready to reveal!';
-    if (isRevealing) return 'Revealing...';
+    if (isSpinning) return 'Spinning...';
     if (lastWin && lastWin > 0) {
       if (lastWin >= betAmount * 10) return 'JACKPOT!';
       if (lastWin >= betAmount * 5) return 'BIG WIN!';
@@ -361,62 +154,12 @@ function SlotsPage({ wallet }) {
     return 'Spin to play!';
   };
 
-  // Show coming soon if game not enabled
-  if (!isGameEnabled && slotsGame) {
-    return (
-      <div className="slots-page">
-        <div className="coming-soon-container">
-          <div className="coming-soon-icon">🎰</div>
-          <h2>Blue Slots</h2>
-          <p>Coming Soon!</p>
-          <p className="coming-soon-desc">
-            3-reel slot machine with multiple winning combinations.
-            Stay tuned for launch!
-          </p>
-        </div>
-        <style>{`
-          .coming-soon-container {
-            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
-            border-radius: 16px;
-            padding: 60px 40px;
-            text-align: center;
-            max-width: 500px;
-            margin: 40px auto;
-          }
-          .coming-soon-icon {
-            font-size: 4rem;
-            margin-bottom: 20px;
-          }
-          .coming-soon-container h2 {
-            color: #f8fafc;
-            margin: 0 0 10px 0;
-          }
-          .coming-soon-container p {
-            color: #f59e0b;
-            font-size: 1.25rem;
-            font-weight: 600;
-            margin: 0;
-          }
-          .coming-soon-desc {
-            color: #94a3b8 !important;
-            font-size: 0.95rem !important;
-            font-weight: 400 !important;
-            margin-top: 20px !important;
-          }
-        `}</style>
-      </div>
-    );
-  }
-
-  // Check if house reserve is too low
-  const isReserveLow = parseFloat(contractInfo.houseReserve) < 100;
-
   return (
     <div className="slots-page">
-      {/* Reserve Warning */}
-      {isReserveLow && (
-        <div className="reserve-warning">
-          House reserve is low. Max bet may be limited.
+      {/* Demo Banner */}
+      {!isContractReady && (
+        <div className="demo-banner">
+          Demo Mode - Contract not yet deployed
         </div>
       )}
 
@@ -452,6 +195,7 @@ function SlotsPage({ wallet }) {
             ))}
           </div>
 
+          {/* Payline indicator */}
           <div className="payline-indicator">
             <span className="payline-arrow">→</span>
             <span className="payline-text">PAYLINE</span>
@@ -463,20 +207,15 @@ function SlotsPage({ wallet }) {
         <div className={`result-message ${lastWin ? 'win' : ''}`}>
           {getResultMessage()}
           {lastWin > 0 && (
-            <div className="win-amount">+{lastWin.toFixed(2)} BLUE</div>
+            <div className="win-amount">+{lastWin} BLUE</div>
           )}
         </div>
-
-        {/* Transaction Status */}
-        {txStatus && (
-          <div className="tx-status">{txStatus}</div>
-        )}
 
         {/* Bet Selection */}
         <div className="bet-section">
           <h3>Select Bet</h3>
           <div className="bet-presets">
-            {BET_PRESETS.filter(p => p >= contractInfo.minBet && p <= Math.min(contractInfo.maxBet, contractInfo.maxBetForReserve)).map((preset) => (
+            {BET_PRESETS.map((preset) => (
               <button
                 key={preset}
                 className={`bet-btn ${betAmount === preset ? 'selected' : ''}`}
@@ -484,7 +223,7 @@ function SlotsPage({ wallet }) {
                   setBetAmount(preset);
                   setCustomBet('');
                 }}
-                disabled={isSpinning || isRevealing || pendingSpinId}
+                disabled={isSpinning}
               >
                 {preset}
               </button>
@@ -497,39 +236,37 @@ function SlotsPage({ wallet }) {
               onChange={(e) => {
                 setCustomBet(e.target.value);
                 const val = parseInt(e.target.value);
-                if (val >= contractInfo.minBet && val <= Math.min(contractInfo.maxBet, contractInfo.maxBetForReserve)) {
+                if (val >= 5 && val <= 100) {
                   setBetAmount(val);
                 }
               }}
-              disabled={isSpinning || isRevealing || pendingSpinId}
+              disabled={isSpinning}
             />
           </div>
           <div className="current-bet">
             Current Bet: <strong>{betAmount} BLUE</strong>
-            <span className="bet-limits"> (Min: {contractInfo.minBet}, Max: {Math.min(contractInfo.maxBet, contractInfo.maxBetForReserve)})</span>
           </div>
         </div>
 
-        {/* Action Buttons */}
-        {pendingSpinId ? (
-          <button
-            className={`spin-btn reveal ${blocksToWait === 0 ? 'ready' : ''}`}
-            onClick={handleReveal}
-            disabled={isRevealing || blocksToWait > 0}
-          >
-            {isRevealing ? 'Revealing...' : blocksToWait > 0 ? `Wait ${blocksToWait} block(s)...` : '🎲 REVEAL RESULT'}
-          </button>
-        ) : (
-          <button
-            className={`spin-btn ${isSpinning ? 'spinning' : ''}`}
-            onClick={handleSpin}
-            disabled={isSpinning}
-          >
-            {isSpinning ? 'Starting...' : `🎰 SPIN - ${betAmount} BLUE`}
-          </button>
-        )}
+        {/* Spin Button */}
+        <button
+          className={`spin-btn ${isSpinning ? 'spinning' : ''}`}
+          onClick={handleSpin}
+          disabled={isSpinning || (!isContractReady && false)}
+        >
+          {isSpinning ? (
+            <>Spinning...</>
+          ) : (
+            <>🎰 SPIN - {betAmount} BLUE</>
+          )}
+        </button>
 
-        {error && <div className="error-message">{error}</div>}
+        {/* Error Message */}
+        {error && (
+          <div className="error-message">
+            {error}
+          </div>
+        )}
       </div>
 
       {/* Info Panels */}
@@ -579,15 +316,15 @@ function SlotsPage({ wallet }) {
             </div>
             <div className="stat-row">
               <span>Total Wagered</span>
-              <span>{parseFloat(stats.totalWagered).toFixed(2)} BLUE</span>
+              <span>{stats.totalWagered} BLUE</span>
             </div>
             <div className="stat-row">
               <span>Total Won</span>
-              <span>{parseFloat(stats.totalWon).toFixed(2)} BLUE</span>
+              <span>{stats.totalWon} BLUE</span>
             </div>
             <div className="stat-row highlight">
               <span>Biggest Win</span>
-              <span>{parseFloat(stats.biggestWin).toFixed(2)} BLUE</span>
+              <span>{stats.biggestWin} BLUE</span>
             </div>
           </div>
         </div>
@@ -623,8 +360,8 @@ function SlotsPage({ wallet }) {
           margin: 0 auto;
         }
 
-        .reserve-warning {
-          background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+        .demo-banner {
+          background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
           color: white;
           padding: 10px 20px;
           border-radius: 8px;
@@ -775,13 +512,6 @@ function SlotsPage({ wallet }) {
           text-shadow: 0 0 20px rgba(251, 191, 36, 0.5);
         }
 
-        .tx-status {
-          text-align: center;
-          color: #60a5fa;
-          font-size: 0.9rem;
-          margin-bottom: 15px;
-        }
-
         .bet-section {
           margin: 20px 0;
           text-align: center;
@@ -827,26 +557,14 @@ function SlotsPage({ wallet }) {
         }
 
         .custom-bet-input {
-          width: 90px;
-          padding: 10px 8px 10px 12px;
+          width: 80px;
+          padding: 10px;
           background: #334155;
           border: 2px solid #475569;
           border-radius: 8px;
           color: #f8fafc;
-          text-align: left;
+          text-align: center;
           font-weight: 600;
-          -moz-appearance: textfield;
-        }
-
-        .custom-bet-input::-webkit-outer-spin-button,
-        .custom-bet-input::-webkit-inner-spin-button {
-          -webkit-appearance: none;
-          margin: 0;
-        }
-
-        .custom-bet-input::placeholder {
-          color: #94a3b8;
-          opacity: 1;
         }
 
         .custom-bet-input:focus {
@@ -861,11 +579,6 @@ function SlotsPage({ wallet }) {
 
         .current-bet strong {
           color: #3b82f6;
-        }
-
-        .bet-limits {
-          color: #64748b;
-          font-size: 0.8rem;
         }
 
         .spin-btn {
@@ -896,20 +609,6 @@ function SlotsPage({ wallet }) {
 
         .spin-btn.spinning {
           animation: spinBtnPulse 0.5s ease-in-out infinite;
-        }
-
-        .spin-btn.reveal {
-          background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
-        }
-
-        .spin-btn.reveal.ready {
-          background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
-          animation: readyPulse 1s ease-in-out infinite;
-        }
-
-        @keyframes readyPulse {
-          0%, 100% { box-shadow: 0 0 20px rgba(34, 197, 94, 0.5); }
-          50% { box-shadow: 0 0 40px rgba(34, 197, 94, 0.8); }
         }
 
         @keyframes spinBtnPulse {
@@ -998,5 +697,3 @@ function SlotsPage({ wallet }) {
     </div>
   );
 }
-
-export default SlotsPage;

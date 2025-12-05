@@ -1,47 +1,42 @@
-require("@nomicfoundation/hardhat-ethers");
-require("@nomicfoundation/hardhat-verify");
-require("dotenv").config();
+import { config as dotenvConfig } from 'dotenv';
+import '@nomicfoundation/hardhat-ethers';
+import '@nomicfoundation/hardhat-verify';
+import '@nomicfoundation/hardhat-chai-matchers';
+
+dotenvConfig();
 
 /** @type import('hardhat/config').HardhatUserConfig */
-module.exports = {
+export default {
   solidity: {
-    version: "0.8.20",
+    version: '0.8.20',
     settings: {
       optimizer: {
         enabled: true,
-        runs: 200
+        runs: 200,
       },
-      viaIR: true
-    }
+    },
   },
   networks: {
-    hardhat: {
-      chainId: 31337
-    },
     bsc_testnet: {
-      url: process.env.BSC_TESTNET_RPC || "https://bsc-testnet-rpc.publicnode.com",
+      url: 'https://bsc-testnet-rpc.publicnode.com',
       chainId: 97,
-      accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [],
+      accounts: process.env.PRIVATE_KEY ? [`0x${process.env.PRIVATE_KEY}`] : [],
       gasPrice: 10000000000, // 10 gwei
-      timeout: 60000
+      timeout: 60000,
     },
-    bsc_mainnet: {
-      url: process.env.BSC_MAINNET_RPC || "https://bsc-dataseed1.binance.org",
-      chainId: 56,
-      accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [],
-      gasPrice: 3000000000 // 3 gwei
-    }
+    hardhat: {
+      chainId: 1337,
+    },
   },
   etherscan: {
     apiKey: {
-      bscTestnet: process.env.BSCSCAN_API_KEY || "",
-      bsc: process.env.BSCSCAN_API_KEY || ""
-    }
+      bscTestnet: process.env.BSCSCAN_API_KEY || '',
+    },
   },
   paths: {
-    sources: "./contracts",
-    tests: "./test",
-    cache: "./cache",
-    artifacts: "./artifacts"
-  }
+    sources: './contracts',
+    tests: './test',
+    cache: './cache',
+    artifacts: './artifacts',
+  },
 };

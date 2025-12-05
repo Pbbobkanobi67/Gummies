@@ -1,40 +1,47 @@
 # Dependencies
 node_modules/
+package-lock.json
 frontend/node_modules/
-
-# Hardhat
-cache/
-artifacts/
-typechain/
-typechain-types/
+frontend/package-lock.json
 
 # Environment
 .env
 .env.local
-.env.*.local
+.env.production
 
-# Build
+# Build artifacts
+artifacts/
+cache/
 dist/
-build/
 frontend/dist/
+typechain/
+typechain-types/
 
-# IDE
-.idea/
-.vscode/
-*.swp
-*.swo
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
 
 # OS
 .DS_Store
 Thumbs.db
 
-# Logs
-*.log
-npm-debug.log*
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
 
-# Coverage
+# Hardhat
 coverage/
 coverage.json
+.openzeppelin/
+
+# Testing
+.nyc_output/
 
 # Misc
-*.bak
+*.tgz
+.cache/
