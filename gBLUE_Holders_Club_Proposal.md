@@ -4,7 +4,7 @@
 
 **Incentivizing gBLUE Holders with Casino Ticket Rewards**
 
-*Across BSC • Abstract • Arborean DEX*
+*Across BSC • Abstract (Arborean DEX)*
 
 ---
 
@@ -17,7 +17,7 @@ Hold gBLUE → Get assigned a Tier → Receive weekly benefits
 ```
 
 **Every week:**
-1. We snapshot gBLUE balances on BSC, Abstract, and Arborean DEX
+1. We snapshot gBLUE balances on BSC and Abstract (including Arborean DEX LPs)
 2. Add up each wallet's total across all chains
 3. Assign tier based on total holdings
 4. Users claim free tickets + get multiplier on purchases
@@ -44,7 +44,7 @@ The cross-chain expansion of gBLUE creates three key opportunities:
 | Reward Tiers | 4 |
 | Max Free Tickets/Week | 100 |
 | Max Purchase Multiplier | 2x |
-| Chains Supported | 3 |
+| Chains Supported | 2 (BSC + Abstract) |
 
 ---
 
@@ -75,7 +75,7 @@ Diamond gets 4x more entries for same spend!
 
 ### How Tiers Work
 
-1. **Weekly snapshot** captures gBLUE balances on BSC, Abstract, and Arborean DEX
+1. **Weekly snapshot** captures gBLUE balances on BSC and Abstract (including Arborean DEX LPs)
 2. **Balances are aggregated** (500 BSC + 500 Abstract = 1,000 total = Gold tier)
 3. **Tier benefits activate** immediately after snapshot
 4. **Free tickets** can be claimed once per week
@@ -136,48 +136,49 @@ Total Weekly Tickets        = 60 tickets/week
 Your gBLUE counts **everywhere** - you don't need to move tokens around. Hold wherever you want:
 
 ```
-BSC wallet:        500 gBLUE
-Abstract wallet:   300 gBLUE
-Arborean LP:       200 gBLUE (in liquidity pool)
-                   ─────────
-Total:           1,000 gBLUE → 🥇 GOLD TIER
+BSC wallet:                 500 gBLUE
+Abstract wallet:            300 gBLUE
+Arborean DEX LP (Abstract): 200 gBLUE (in liquidity pool)
+                            ─────────
+Total:                    1,000 gBLUE → 🥇 GOLD TIER
 ```
 
 This is powerful because:
 - No bridging required to qualify for tiers
-- LP positions count toward your total
+- LP positions on Arborean DEX count toward your total
 - Flexibility to use gBLUE wherever makes sense for you
 
 ---
 
 ## Cross-Chain Architecture
 
-The gBLUE Holders Club aggregates holdings across three chains to determine tier eligibility.
+The gBLUE Holders Club aggregates holdings across both chains to determine tier eligibility.
 
 ### Supported Chains
 
 | Chain | Role | Features |
 |-------|------|----------|
 | **BSC** | Primary Chain | Raffle Contract, Ticket Claims, Prize Distribution |
-| **Abstract** | Consumer L2 | gBLUE Holdings, Future Expansion, Low Gas Entries |
-| **Arborean DEX** | DEX Platform | LP Positions, gBLUE Trading, LP Rewards |
+| **Abstract** | Consumer L2 | gBLUE Holdings, Arborean DEX, LP Positions, Low Gas |
+
+**Arborean DEX** is the decentralized exchange on Abstract blockchain where gBLUE can be traded and liquidity provided.
 
 ### Data Flow
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│  1. SNAPSHOT: Capture gBLUE balances on all chains (weekly)     │
-│                                                                  │
-│  2. AGGREGATE: Sum holdings per wallet address                   │
-│     └── BSC: 1,000 + Abstract: 500 + Arborean LP: 500 = 2,000   │
-│                                                                  │
-│  3. CALCULATE: Determine tier + LP bonuses                       │
-│     └── 2,000 gBLUE = Gold (30 tickets) + LP (+22 bonus)        │
-│                                                                  │
-│  4. MERKLE ROOT: Generate proof for all eligible wallets         │
-│                                                                  │
-│  5. CLAIM: Users claim tickets on BSC with Merkle proof          │
-└─────────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────────┐
+│  1. SNAPSHOT: Capture gBLUE balances on BSC + Abstract (weekly)      │
+│                                                                       │
+│  2. AGGREGATE: Sum holdings per wallet address                        │
+│     └── BSC: 1,000 + Abstract wallet: 500 + Arborean LP: 500 = 2,000 │
+│                                                                       │
+│  3. CALCULATE: Determine tier + LP bonuses                            │
+│     └── 2,000 gBLUE = Gold (30 tickets) + LP (+22 bonus)             │
+│                                                                       │
+│  4. MERKLE ROOT: Generate proof for all eligible wallets              │
+│                                                                       │
+│  5. CLAIM: Users claim tickets on BSC with Merkle proof               │
+└──────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
@@ -266,7 +267,7 @@ The existing BlueRaffle contract will be updated to:
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│  MONDAY     │  Snapshot taken across all chains             │
+│  MONDAY     │  Snapshot taken on BSC + Abstract             │
 ├─────────────┼───────────────────────────────────────────────┤
 │  TUESDAY    │  Merkle root published on-chain               │
 ├─────────────┼───────────────────────────────────────────────┤
@@ -377,4 +378,4 @@ This proposal represents a significant opportunity to add utility to gBLUE while
 
 *BlueRaffle × Blue Protocol*
 
-*BSC • Abstract • Arborean DEX*
+*BSC • Abstract (Arborean DEX)*
